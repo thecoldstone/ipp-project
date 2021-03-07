@@ -1,5 +1,6 @@
 <?php
 
+require "DOMWriter.php";
 require "ErrorHandler.php";
 require "IPPcode21.php";
 
@@ -10,17 +11,21 @@ class Parser extends ErrorHandler
     private $currentArguments;
     private $headerFlag;
 
+    private $dom;
+
     public function __construct(Stats $stats)
     {
         $this->stats = $stats;
         $this->currentArguments = array();
         $this->headerFlag = false;
+
+        $this->dom = new DOMWriter();
     }
 
     private function load_instruction()
     {
         if(!($line = fgets(STDIN))) {
-            return -1;
+            return false;
         } 
 
         # Remove comment whether it appears
@@ -32,15 +37,19 @@ class Parser extends ErrorHandler
 
         $tockens = explode(' ', $line);
 
-        $this->stats->cntLines++;
+        $this->stats->addUpLine();
 
         return $tockens;
     }
 
     public function parse()
     {
-        // TODO Enable reading blank lines at the beginning of the file
-        while (($tockens = $this->load_instruction()) != -1) {
+        while (($tockens = $this->load_instruction())) {
+            
+            # If the line contains the comment or it's empty
+            if(empty($tockens[0])) {
+                continue;
+            }
 
             # Check the header whether it has already appeared
             if(!$this->headerFlag && count($tockens) > 0) {
@@ -61,57 +70,88 @@ class Parser extends ErrorHandler
 
             # Check the syntax of the instruction
             $this->check_syntax($tockens);
+
+            # Write to XML file
+            $this->dom->set_instruction($this->stats->getInstruction(), $this->currentInstruction, $this->currentArguments);
         }
+
+        $this->dom->save();
     }
 
-    public function check_syntax($tockens) 
+    private function check_syntax($tockens) 
     {
-        switch (strtoupper($tockens[0])) {
-            case IPPCode::MOVE: // MOVE <var> <symb>
-                $this->check_tockens(3, count($tockens));
-                $this->check_var($tockens[1]);      // <var>
-                $this->check_symbol($tockens[2]);   // <symb>
+        $this->currentInstruction = strtoupper($tockens[0]);
+        $this->currentArguments = [];
+        $this->stats->addUpInstruction();
 
+        switch ($this->currentInstruction) {
+            case IPPCode::MOVE: // <var> <symb>
+            case IPPCode::INT2CHAR:
+            case IPPCode::STRLEN:
+            case IPPCode::TYPE:
+                $this->check_tockens(3, count($tockens));
+                $this->check_var($tockens[1]);      
+                $this->check_symbol($tockens[2]);  
+                
                 break;
-            case IPPCode::CREATEFRAME:  // CREATFRAME
-            case IPPCode::PUSHFRAME:    // PUSHFRAME
-            case IPPCode::POPFRAME:     // POPFRAME
+            case IPPCode::CREATEFRAME:  
+            case IPPCode::PUSHFRAME:    
+            case IPPCode::POPFRAME:   
             case IPPCode::RETURN:
+            case IPPCode::BREAK:
                 $this->check_tockens(1, count($tockens));
+                $this->check_brake($tockens[0]);
+
                 // TODO
 
                 break;
-            case IPPCode::DEFVAR: // DEFVAR <var>
+            case IPPCode::DEFVAR: // <var>
+            case IPPCode::POPS:
                 $this->check_tockens(2, count($tockens));
                 $this->check_var($tockens[1]);
 
                 break;
 
-            case IPPCode::CALL: // CALL <label>
-            case IPPCode::LABEL: // LABEL <label>
-            case IPPCode::JUMP: // JUMP <label>
+            case IPPCode::CALL: // <label>
+            case IPPCode::LABEL: 
+            case IPPCode::JUMP: 
                 $this->check_tockens(2, count($tockens));
                 $this->check_label($tockens[1]);
 
                 break;
 
-            case IPPCode::JUMPIFEQ:
+            case IPPCode::JUMPIFEQ: // <label> <symb1> <symb2>
             case IPPCode::JUMPIFNEQ:
                 $this->check_tockens(4, count($tockens));
+                $this->check_label($tockens[1]);
+                $this->check_symbol($tockens[2]);
+                $this->check_symbol($tockens[3]);
 
                 break;
 
-            case IPPCode::PUSHS:
-            case IPPCode::POPS:
+            case IPPCode::PUSHS: // <symb>
+            case IPPCode::WRITE:
+            case IPPCode::EXIT:
+            case IPPCode::DPRINT:
                 $this->check_tockens(2, count($tockens));
                 $this->check_symbol($tockens[1]);
 
                 break;
 
-            case IPPCode::ADD:
-                break;
-
+            case IPPCode::ADD: // <var> <symb1> <symb2>
+            case IPPCode::SUB:
+            case IPPCode::MUL:
+            case IPPCode::IDIV:
+            case IPPCode::LT:
+            case IPPCode::GT:
+            case IPPCode::EQ:
+            case IPPCode::AND:
+            case IPPCode::OR:
+            case IPPCode::NOT:
+            case IPPCode::STRI2INT:
             case IPPCode::CONCAT:
+            case IPPCode::GETCHAR:
+            case IPPCode::SETCHAR:
                 $this->check_tockens(4, count($tockens));
                 $this->check_var($tockens[1]);
                 $this->check_symbol($tockens[2]);
@@ -119,14 +159,15 @@ class Parser extends ErrorHandler
 
                 break;
 
-            case IPPCode::WRITE:
-                $this->check_tockens(2, count($tockens));
-                $this->check_symbol($tockens[1]);
+            case IPPCode::READ: // READ <var> <type>
+                $this->check_tockens(3, count($tockens));
+                $this->check_var($tockens[1]); 
+                $this->check_type($tockens[2]); 
 
                 break;
 
             default:
-                $this->exit_program("Foreign instruction code {$tockens[0]}", ErrorTypes::FOREIGNOPCODE, $this->stats->cntLines);
+                $this->exit_program("Foreign instruction code {$tockens[0]}", ErrorTypes::FOREIGNOPCODE, $this->stats->getLine());
         }
     }
 
@@ -145,7 +186,7 @@ class Parser extends ErrorHandler
     {   
         if (strpos($line, "#") !== false) {
             $line = explode("#", $line);
-            $this->stats->cntComments++;
+            $this->stats->addUpComment();
             return $line[0];
         }
 
@@ -156,9 +197,9 @@ class Parser extends ErrorHandler
     {
         // TODO collect the statistics
         if (preg_match("/^(GF|LF|TF)@(_|-|\$|&|%|\*|\!|\?|[a-zA-Z])(_|-|\$|&|%|\*|\!|\?|[a-zA-Z0-9])*$/", $var)) {
-            array_push($this->currentArguments, ['var' => $var]);
+            array_push($this->currentArguments, ["var" => $var]);
         } else {
-            $this->exit_program(".IPPcode21 header is missing\n", ErrorTypes::MISSINGHEADER, $this->stats->cntLines);
+            $this->exit_program(".IPPcode21 header is missing\n", ErrorTypes::MISSINGHEADER, $this->stats->getLine());
         }
     }
 
@@ -166,38 +207,56 @@ class Parser extends ErrorHandler
     {
         // TODO collect the statistics
         if (preg_match("/^(_|-|\$|&|%|\*|\!|\?|[a-zA-Z])(_|-|\$|&|%|\*|\!|\?|[a-zA-Z0-9])*$/", $label)) {
-            array_push($this->currentArguments, ['label' => $label]);
+            $this->stats->addUpLabel();
+            array_push($this->currentArguments, ["label" => $label]);
         } else {
-            $this->exit_program(".IPPcode21 header is missing\n", ErrorTypes::MISSINGHEADER, $this->stats->cntLines);
+            $this->exit_program(".IPPcode21 header is missing\n", ErrorTypes::MISSINGHEADER, $this->stats->getLine());
         }
     }
 
     private function check_symbol($symbol)
     {
-        if (preg_match("/^(int|bool|string)@.*$/", $symbol)) {
+        if (preg_match("/^(int|bool|string|nil|float)@.*$/", $symbol)) {
             $symbol = explode("@", $symbol, 2);
             switch ($symbol[0]) {
                 case "int":
-                    if (empty($symbol[1])) {
+                    if (strlen($symbol[1]) == 0) {
                         $this->exit_program(
                             "Missing value for integer\n",
-                            ErrorTypes::LEXSYNTAXERROR, $this->stats->cntLines
+                            ErrorTypes::LEXSYNTAXERROR, $this->stats->getLine()
                         );
                     }
-                    array_push($this->currentArguments, [$symbol[0] => $symbol[1]]);
+                    array_push($this->currentArguments, ["int" => $symbol[1]]);
                     break;
+
                 case "bool":
                     if (!preg_match("/^(true|false)$/", $symbol[1])) {
                         $this->exit_program(
-                            "Missing value for integer\n",
-                            ErrorTypes::LEXSYNTAXERROR, $this->stats->cntLines
+                            "Incorrect boolean type {$symbol[1]}\n",
+                            ErrorTypes::LEXSYNTAXERROR, $this->stats->getLine()
                         );
                     }
-                    array_push($this->currentArguments, [$symbol[0] => $symbol[1]]);
+                    array_push($this->currentArguments, ["bool" => $symbol[1]]);
                     break;
+
                 case "string":
-                    array_push($this->currentArguments, [$symbol[0] => $symbol[1]]);
+                    array_push($this->currentArguments, ["string" => $symbol[1]]);
                     break;
+
+                case "nil":
+                    if(!preg_match("/^(nil)$/", $symbol[1])) {
+                        $this->exit_program(
+                            "Incorrect nil type {$symbol[1]}\n",
+                            ErrorTypes::LEXSYNTAXERROR, $this->stats->getLine()
+                        );
+                    }
+                    array_push($this->currentArguments, ["nil" => $symbol[1]]);
+                    break;
+                
+                case "float":
+                    array_push($this->currentArguments, ["float" => $symbol[1]]);
+                    break;
+
             }
         } else if(preg_match("/^(GF|LF|TF)@.*$/", $symbol)) {
             // TODO Check the case GF@<empty>
@@ -205,7 +264,7 @@ class Parser extends ErrorHandler
         } else {
             $this->exit_program(
                 "Syntax Error",
-                ErrorTypes::LEXSYNTAXERROR, $this->stats->cntLines
+                ErrorTypes::LEXSYNTAXERROR, $this->stats->getLine()
             );
         }
     }
@@ -213,5 +272,13 @@ class Parser extends ErrorHandler
     private function check_type($type)
     {
         // TODO
+    }
+
+    private function check_brake($tocken)
+    {
+        if($tocken == "BREAK") {
+            fprintf(STDERR, 
+            "Breakpoint : {$this->stats->getLine()}\nCalled instructions : {$this->stats->getInstruction()}\n");
+        }
     }
 }

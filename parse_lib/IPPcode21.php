@@ -19,7 +19,7 @@ interface IPPCode
     // Arithmetic, Relation, Boolean, and Conversion Intstructions
     const ADD           = "ADD";
     const SUB           = "SUB";
-    const MULL          = "MULL";
+    const MUL           = "MULL";
     const IDIV          = "IDIV";
     const LT            = "LT";
     const GT            = "GT";
