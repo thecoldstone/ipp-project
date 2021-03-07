@@ -1,21 +1,25 @@
 <?php
 
 require "DOMWriter.php";
+require "parserInitHandler.php";
 require "ErrorHandler.php";
+require "ErrorTypes.php";
 require "IPPcode21.php";
 
 class Parser extends ErrorHandler
 {
-    private $stats;
+    use parserInitHandler;
+
     private $currentInstruction;
     private $currentArguments;
     private $headerFlag;
 
     private $dom;
 
-    public function __construct(Stats $stats)
+    public function __construct()
     {
-        $this->stats = $stats;
+        $this->init_parser();
+
         $this->currentArguments = array();
         $this->headerFlag = false;
 
@@ -268,7 +272,7 @@ class Parser extends ErrorHandler
             );
         }
     }
-
+ 
     private function check_type($type)
     {
         // TODO

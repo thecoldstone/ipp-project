@@ -6,22 +6,12 @@ class Stats {
     protected $cntLines;
     protected $cntLabels;
 
-    private $flgStats; // The flag for storing stats
-    private $flgLoc; // The flag for setting the counter of instructions
-    private $flgComments; // The flag for setting the counter of comments
-    private $flgLabel; // ???
-    private $flgJumpgs;
-
-    public $header;
-
     public function __construct()
     {
         $this->cntInstructions = 0;
         $this->cntComments     = 0;
         $this->cntLines = 0;
         $this->cntLabels = 0;
-
-        $this->header          = false;
     }
 
     public function getInstruction() {
