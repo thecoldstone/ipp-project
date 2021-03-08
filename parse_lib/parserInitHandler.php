@@ -68,6 +68,8 @@ trait parserInitHandler
                 fprintf(STDERR, "[ERROR] -s or --stats flag is missing\n");
                 exit(ErrorTypes::BADPARAMETER);
             }
+
+            $this->flgStats = true;
             
             if(!preg_match("/^(--stats|-s)=[a-zA-Z].*/", $argv[1])) {
                 fprintf(STDERR, "[ERROR] Wrong combination of flags\n");
@@ -108,5 +110,49 @@ trait parserInitHandler
     private function check_filename() 
     {
         // TODO
+    }
+
+    protected function write_to_files()
+    {
+        if(!$this->flgStats) {
+            return;
+        }
+
+        if (!is_array($this->file)) {
+            $file = fopen($this->file, "w");
+            fclose($file);
+        } else {
+            foreach($this->file as $key => $f) {
+                // var_dump($f);
+                $file = fopen($f["file"], "w");
+                if(in_array("--loc", $f)) {
+                    fwrite($file, "Count of instructions : {$this->stats->getInstruction()}\n");
+                }
+                if(in_array("--comments", $f)) {
+                    fwrite($file, "Count of comments : {$this->stats->getComment()}\n");
+                }
+                if(in_array("--labels", $f)) {
+                    fwrite($file, "Count of labels : {$this->stats->getLabel()}\n");
+                }
+                if(in_array("--jumps", $f)){
+                    // TODO Change to jumps
+                    fwrite($file, "Count of jumps : {$this->stats->getLabel()}\n");
+                }
+                if(in_array("--fwjumps", $f)){
+                    // TODO Change to jumps
+                    fwrite($file, "Count of fwjumps : {$this->stats->getLabel()}\n");
+                }
+                if(in_array("--backjumps", $f)){
+                    // TODO Change to jumps
+                    fwrite($file, "Count of backjumps : {$this->stats->getLabel()}\n");
+                }
+                if(in_array("--badjumps", $f)){
+                    // TODO Change to jumps
+                    fwrite($file, "Count of badjumps : {$this->stats->getLabel()}\n");
+                }
+
+                fclose($file);
+            }
+        }
     }
 }

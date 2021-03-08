@@ -2,6 +2,9 @@
 
 class ErrorHandler {
 
+    // TODO Refactoring
+    // Use raise Error and Try & Catch in parse.php
+
     protected $parserState = ErrorTypes::OK;
 
     public function check_tockens($expected, $actual)

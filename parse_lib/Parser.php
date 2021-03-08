@@ -79,6 +79,7 @@ class Parser extends ErrorHandler
             $this->dom->set_instruction($this->stats->getInstruction(), $this->currentInstruction, $this->currentArguments);
         }
 
+        $this->write_to_files();
         $this->dom->save();
     }
 
@@ -105,8 +106,6 @@ class Parser extends ErrorHandler
             case IPPCode::BREAK:
                 $this->check_tockens(1, count($tockens));
                 $this->check_brake($tockens[0]);
-
-                // TODO
 
                 break;
             case IPPCode::DEFVAR: // <var>
@@ -266,16 +265,17 @@ class Parser extends ErrorHandler
             // TODO Check the case GF@<empty>
             $this->check_var($symbol);
         } else {
-            $this->exit_program(
-                "Syntax Error",
-                ErrorTypes::LEXSYNTAXERROR, $this->stats->getLine()
-            );
+            $this->exit_program("Syntax Error", ErrorTypes::LEXSYNTAXERROR, $this->stats->getLine());
         }
     }
  
     private function check_type($type)
     {
-        // TODO
+        if (preg_match("/^(int|bool|string|float)$/", $type)) {
+            array_push($this->currentArguments, ["type" => $type]);
+        } else {
+            $this->exit_program("Type {$type} does not exist", ErrorTypes::LEXSYNTAXERROR, $this->stats->getLine());
+        }
     }
 
     private function check_brake($tocken)
