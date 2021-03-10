@@ -32,7 +32,7 @@ trait parserInitHandler
         global $argc, $argv;
         $optind = 0;
         $shortopts = "hs:";
-        $longopts  = array("help", "stats:", "loc", "comments", "labels");
+        $longopts  = array("help", "stats:", "loc", "comments", "labels", "jumps", "fwjumps", "backjumps", "badjumps");
 
         $opts = getopt($shortopts, $longopts, $optind);
 
@@ -53,8 +53,6 @@ trait parserInitHandler
             }
         } elseif ($argc > 2) {
 
-            $loc = false;
-            $comments = false;
             $cntFiles = -1;
             $fileNames = array();
             $this->file = array();
@@ -101,8 +99,6 @@ trait parserInitHandler
                 }
             }
         }
-
-        // var_dump($this->file);
 
         return $this->stats;
     }
