@@ -65,7 +65,7 @@ class Parser extends ErrorHandler
 
                 # Otherwise check the content of this line
                 if (!$this->check_header($tockens[0])) {
-                    $this->exit_program(".IPPcode21 header is missing", ErrorTypes::MISSINGHEADER, $this->stats->cntLines);
+                    $this->exit_program(".IPPcode21 header is missing", ErrorTypes::MISSINGHEADER, $this->stats->getLine());
                 }
 
                 # Once everything has passed successfully the program can keep going the parsing
