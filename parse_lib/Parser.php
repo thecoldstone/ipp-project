@@ -22,6 +22,7 @@ class Parser extends ErrorHandler
 
         $this->currentArguments = array();
         $this->headerFlag = false;
+        $this->currentLine = 0;
 
         $this->dom = new DOMWriter();
     }
@@ -42,6 +43,7 @@ class Parser extends ErrorHandler
         $tockens = explode(' ', $line);
 
         $this->stats->addUpLine();
+        $this->currentLine++;
 
         return $tockens;
     }
@@ -65,7 +67,7 @@ class Parser extends ErrorHandler
 
                 # Otherwise check the content of this line
                 if (!$this->check_header($tockens[0])) {
-                    $this->exit_program(".IPPcode21 header is missing", ErrorTypes::MISSINGHEADER, $this->stats->getLine());
+                    $this->exit_program(".IPPcode21 header is missing", ErrorTypes::MISSINGHEADER);
                 }
 
                 # Once everything has passed successfully the program can keep going the parsing
@@ -181,13 +183,13 @@ class Parser extends ErrorHandler
                 break;
 
             default:
-                $this->exit_program("Foreign instruction code {$tockens[0]}", ErrorTypes::FOREIGNOPCODE, $this->stats->getLine());
+                $this->exit_program("Foreign instruction code {$tockens[0]}", ErrorTypes::FOREIGNOPCODE);
         }
     }
 
     private function check_header($header)
     {
-        if ($header == IPPCode::HEADER) {
+        if (strcasecmp($header, IPPCode::HEADER) == 0) {
             $this->headerFlag = true;
             return true;
         } else {
@@ -210,10 +212,10 @@ class Parser extends ErrorHandler
     private function check_var($var)
     {
         // TODO collect the statistics
-        if (preg_match("/^(GF|LF|TF)@(_|-|\$|&|%|\*|\!|\?|[a-zA-Z])(_|-|\$|&|%|\*|\!|\?|[a-zA-Z0-9])*$/", $var)) {
+        if (preg_match("/^(GF|LF|TF)@([a-z]|[A-Z]|[\_\-\$\&\%\*\?\!])(\w|[\_\-\$\&\%\*\?\!])*$/", $var)) {
             array_push($this->currentArguments, ["var" => $var]);
         } else {
-            $this->exit_program(".IPPcode21 header is missing\n", ErrorTypes::MISSINGHEADER, $this->stats->getLine());
+            $this->exit_program("Illegal format for variable", ErrorTypes::LEXSYNTAXERROR);
         }
     }
 
@@ -223,7 +225,7 @@ class Parser extends ErrorHandler
         if (preg_match("/^(_|-|\$|&|%|\*|\!|\?|[a-zA-Z])(_|-|\$|&|%|\*|\!|\?|[a-zA-Z0-9])*$/", $label)) {
             array_push($this->currentArguments, ["label" => $label]);
         } else {
-            $this->exit_program(".IPPcode21 header is missing\n", ErrorTypes::MISSINGHEADER, $this->stats->getLine());
+            $this->exit_program("Illegal format for label", ErrorTypes::LEXSYNTAXERROR);
         }
     }
 
@@ -235,9 +237,8 @@ class Parser extends ErrorHandler
                 case "int":
                     if (strlen($symbol[1]) == 0) {
                         $this->exit_program(
-                            "Missing value for integer\n",
-                            ErrorTypes::LEXSYNTAXERROR,
-                            $this->stats->getLine()
+                            "Missing value for integer",
+                            ErrorTypes::LEXSYNTAXERROR
                         );
                     }
                     array_push($this->currentArguments, ["int" => $symbol[1]]);
@@ -246,24 +247,28 @@ class Parser extends ErrorHandler
                 case "bool":
                     if (!preg_match("/^(true|false)$/", $symbol[1])) {
                         $this->exit_program(
-                            "Incorrect boolean type {$symbol[1]}\n",
-                            ErrorTypes::LEXSYNTAXERROR,
-                            $this->stats->getLine()
+                            "Incorrect boolean type {$symbol[1]}",
+                            ErrorTypes::LEXSYNTAXERROR
                         );
                     }
                     array_push($this->currentArguments, ["bool" => $symbol[1]]);
                     break;
 
                 case "string":
+                    if (!preg_match('/^([^\s\#\\\\]|\\\\[0-9]{3})*$/', $symbol[1])) { // TODO ????
+                        $this->exit_program(
+                            "Incorrect string literal {$symbol[1]}",
+                            ErrorTypes::LEXSYNTAXERROR
+                        );
+                    }
                     array_push($this->currentArguments, ["string" => $symbol[1]]);
                     break;
 
                 case "nil":
                     if (!preg_match("/^(nil)$/", $symbol[1])) {
                         $this->exit_program(
-                            "Incorrect nil type {$symbol[1]}\n",
-                            ErrorTypes::LEXSYNTAXERROR,
-                            $this->stats->getLine()
+                            "Incorrect nil type {$symbol[1]}",
+                            ErrorTypes::LEXSYNTAXERROR
                         );
                     }
                     array_push($this->currentArguments, ["nil" => $symbol[1]]);
@@ -272,9 +277,8 @@ class Parser extends ErrorHandler
                 case "float":
                     if (strlen($symbol[1]) == 0) {
                         $this->exit_program(
-                            "Missing value for float\n",
-                            ErrorTypes::LEXSYNTAXERROR,
-                            $this->stats->getLine()
+                            "Missing value for float",
+                            ErrorTypes::LEXSYNTAXERROR
                         );
                     }
                     array_push($this->currentArguments, ["float" => $symbol[1]]);
@@ -284,7 +288,7 @@ class Parser extends ErrorHandler
             // TODO Check the case GF@<empty>
             $this->check_var($symbol);
         } else {
-            $this->exit_program("Syntax Error", ErrorTypes::LEXSYNTAXERROR, $this->stats->getLine());
+            $this->exit_program("Syntax Error", ErrorTypes::LEXSYNTAXERROR);
         }
     }
 
@@ -293,7 +297,7 @@ class Parser extends ErrorHandler
         if (preg_match("/^(int|bool|string|float)$/", $type)) {
             array_push($this->currentArguments, ["type" => $type]);
         } else {
-            $this->exit_program("Type {$type} does not exist", ErrorTypes::LEXSYNTAXERROR, $this->stats->getLine());
+            $this->exit_program("Type {$type} does not exist", ErrorTypes::LEXSYNTAXERROR);
         }
     }
 

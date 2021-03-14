@@ -11,6 +11,7 @@ class DOMWriter {
         $this->dom = new DOMDocument();
         $this->dom->encoding = "UTF-8";
         $this->dom->xmlVersion = "1.0";
+        $this->dom->formatOutput = true;
 
         $this->root();
     }
