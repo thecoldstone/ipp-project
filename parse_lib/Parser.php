@@ -96,6 +96,7 @@ class Parser extends ErrorHandler
             case IPPCode::INT2CHAR:
             case IPPCode::STRLEN:
             case IPPCode::TYPE:
+            case IPPCode::NOT:
                 $this->check_tockens(3, count($tockens));
                 $this->check_var($tockens[1]);
                 $this->check_symbol($tockens[2]);
@@ -163,7 +164,6 @@ class Parser extends ErrorHandler
             case IPPCode::EQ:
             case IPPCode::AND:
             case IPPCode::OR:
-            case IPPCode::NOT:
             case IPPCode::STRI2INT:
             case IPPCode::CONCAT:
             case IPPCode::GETCHAR:
@@ -213,6 +213,9 @@ class Parser extends ErrorHandler
     {
         // TODO collect the statistics
         if (preg_match("/^(GF|LF|TF)@([a-z]|[A-Z]|[\_\-\$\&\%\*\?\!])(\w|[\_\-\$\&\%\*\?\!])*$/", $var)) {
+            if (preg_match("/&/", $var)) {
+                $var = str_replace("&", "&amp;", $var);
+            }
             array_push($this->currentArguments, ["var" => $var]);
         } else {
             $this->exit_program("Illegal format for variable", ErrorTypes::LEXSYNTAXERROR);
@@ -222,7 +225,10 @@ class Parser extends ErrorHandler
     private function check_label($label)
     {
         // TODO collect the statistics
-        if (preg_match("/^(_|-|\$|&|%|\*|\!|\?|[a-zA-Z])(_|-|\$|&|%|\*|\!|\?|[a-zA-Z0-9])*$/", $label)) {
+        if (preg_match("/^([a-z]|[A-Z]|[\_\-\$\&\%\*\?\!])(\w|[\_\-\$\&\%\*\?\!])*$/", $label)) {
+            if (preg_match("/&/", $label)) {
+                $label = str_replace("&", "&amp;", $label);
+            }
             array_push($this->currentArguments, ["label" => $label]);
         } else {
             $this->exit_program("Illegal format for label", ErrorTypes::LEXSYNTAXERROR);
@@ -236,50 +242,40 @@ class Parser extends ErrorHandler
             switch ($symbol[0]) {
                 case "int":
                     if (strlen($symbol[1]) == 0) {
-                        $this->exit_program(
-                            "Missing value for integer",
-                            ErrorTypes::LEXSYNTAXERROR
-                        );
+                        $this->exit_program("Missing value for integer", ErrorTypes::LEXSYNTAXERROR);
                     }
                     array_push($this->currentArguments, ["int" => $symbol[1]]);
                     break;
 
                 case "bool":
                     if (!preg_match("/^(true|false)$/", $symbol[1])) {
-                        $this->exit_program(
-                            "Incorrect boolean type {$symbol[1]}",
-                            ErrorTypes::LEXSYNTAXERROR
-                        );
+                        $this->exit_program("Incorrect boolean type {$symbol[1]}", ErrorTypes::LEXSYNTAXERROR);
                     }
                     array_push($this->currentArguments, ["bool" => $symbol[1]]);
                     break;
 
                 case "string":
-                    if (!preg_match('/^([^\s\#\\\\]|\\\\[0-9]{3})*$/', $symbol[1])) { // TODO ????
-                        $this->exit_program(
-                            "Incorrect string literal {$symbol[1]}",
-                            ErrorTypes::LEXSYNTAXERROR
-                        );
+                    if (!preg_match('/^([^\s\#\\\\]|\\\\[0-9]{3})*$/', $symbol[1])) {
+                        $this->exit_program("Incorrect string literal {$symbol[1]}", ErrorTypes::LEXSYNTAXERROR);
                     }
+
+                    if (preg_match("/&/", $symbol[1])) {
+                        $symbol[1] = str_replace("&", "&amp;", $symbol[1]);
+                    }
+
                     array_push($this->currentArguments, ["string" => $symbol[1]]);
                     break;
 
                 case "nil":
                     if (!preg_match("/^(nil)$/", $symbol[1])) {
-                        $this->exit_program(
-                            "Incorrect nil type {$symbol[1]}",
-                            ErrorTypes::LEXSYNTAXERROR
-                        );
+                        $this->exit_program("Incorrect nil type {$symbol[1]}", ErrorTypes::LEXSYNTAXERROR);
                     }
                     array_push($this->currentArguments, ["nil" => $symbol[1]]);
                     break;
 
                 case "float":
                     if (strlen($symbol[1]) == 0) {
-                        $this->exit_program(
-                            "Missing value for float",
-                            ErrorTypes::LEXSYNTAXERROR
-                        );
+                        $this->exit_program("Missing value for float", ErrorTypes::LEXSYNTAXERROR);
                     }
                     array_push($this->currentArguments, ["float" => $symbol[1]]);
                     break;
@@ -298,6 +294,13 @@ class Parser extends ErrorHandler
             array_push($this->currentArguments, ["type" => $type]);
         } else {
             $this->exit_program("Type {$type} does not exist", ErrorTypes::LEXSYNTAXERROR);
+        }
+    }
+
+    private function check_tockens($expected, $actual)
+    {
+        if ($expected != $actual) {
+            $this->exit_program("Number of tockens is incorrect", ErrorTypes::LEXSYNTAXERROR);
         }
     }
 

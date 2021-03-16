@@ -21,7 +21,6 @@ class DOMWriter {
         $this->root = $this->dom->createElement("program");
         $rootAtt = new DOMAttr("language", "IPPcode21");
         $this->root->setAttributeNode($rootAtt);
-
     }
 
     public function set_instruction($order, $opcode, $arguments)

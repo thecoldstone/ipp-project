@@ -4,63 +4,136 @@ import os
 import sys
 import subprocess
 
-PATH_TO_OUTPUT = "result"
-PATH_TO_TEST_FOLDER = f"parse-only/{sys.argv[1]}"
+from unittest.mock import patch
 
+PATH_TO_TEST_FOLDER = f"{os.getcwd()}/test/parse-only/"
 
-if not os.path.exists(PATH_TO_OUTPUT):
-    os.mkdir(PATH_TO_OUTPUT)
-else:
-    os.rmdir(PATH_TO_OUTPUT)
-    os.mkdir(PATH_TO_OUTPUT)    
+class Test():
 
-cwd = os.getcwd()
-folder = cwd + f"/test/{PATH_TO_TEST_FOLDER}"
+    def __init__(self, ):
+        self.cnt_passed = 0
+        self.cnt_failed = 0
+        self.cnt_tests = 0
+        self.cnt_files = 0
 
-files = os.listdir(folder)
-files = sorted(files, key=str.lower)
+        self.args = ["php", "parse.php"]
 
-cnt_passed = 0
-cnt_failed = 0
-cnt_tests = 0
+    def test(self, path, files):
 
-for filename in files:
-    
-    if filename.endswith('.src'):
+        files = sorted(files, key=str.lower)
 
-        cnt_tests += 1
+        for file in files:
+            
+            if file == "README.md":
+                continue
 
-        # Execute parser.php
-        file_to_parse = open(f"{folder}/{filename}")
-        FNULL = open(os.devnull, 'w')
-        status = subprocess.run(["php", "parse.php"], stdin=file_to_parse, stdout=FNULL, stderr=subprocess.STDOUT).returncode
+            if os.path.isdir(f"{path}{file}"):
+                files = os.listdir(f"{path}{file}/")
+                self.test(f"{path}{file}/", files)
+            else:
+                self.test_directory(path)
+                return
 
-        # Check the return code
-        if status != 0:
-            with open(f"./test/{PATH_TO_TEST_FOLDER}/{filename[:-4]}.rc", "r") as f:
-                line = f.readline()
-                if int(line) != status:
-                    print(f"{filename} : Failed")
-                    cnt_failed += 1
+    def test_directory(self, path, set_output = False):
+     
+        files = os.listdir(path)
+        files = sorted(files, key=str.lower)
+
+        for filename in files:
+
+            if filename.endswith('.src'):
+
+                self.cnt_tests += 1
+
+                # Execute parser.php
+                file_to_parse = open(f"{path}{filename}")
+                status = subprocess.run(self.args, stdin=file_to_parse, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
+
+                # # Check the return code
+                if status != 0:
+                    with open(f"{path}{filename[:-4]}.rc", "r") as f:
+                        line = f.readline()
+                        if int(line) != status:
+                            if(set_output):
+                                print(f"{filename} : Failed")
+                            
+                            self.cnt_failed += 1
+                        else:
+                            if(set_output):
+                                print(f"{filename} : OK")
+                            
+                            self.cnt_passed += 1
+                    continue
+
+                # Compare xml files
+                result = main.diff_files("output.xml",
+                        f"{path}/{filename[:-4]}.out",
+                        diff_options={'F' : 0.5, 'ratio_mode' : 'fast'})
+                
+                if len(result) == 0:
+                    if(set_output):
+                        print(f"{filename} : OK")
+                    
+                    self.cnt_passed += 1
                 else:
-                    print(f"{filename} : OK")
-                    cnt_passed += 1
-            continue
+                    if(set_output):
+                        print(f"{filename} : {result}")
+                    
+                    self.cnt_failed += 1
 
-        # Compare xml files
-        result = main.diff_files("output.xml",
-                f"./test/{PATH_TO_TEST_FOLDER}/{filename[:-4]}.out",
-                diff_options={'F' : 0.5, 'ratio_mode' : 'fast'})
+        print(f"Test folder : {path} Passed : {self.cnt_passed} Failed : {self.cnt_failed}")
+        print("----------------")
+    
+    def stats(self):
+
+        print(f"Number of tests : {self.cnt_tests}")
+        print(f"Passed : {self.cnt_passed}")
+        print(f"Failed : {self.cnt_failed}")
+        print(f"Success : {self.cnt_passed / self.cnt_tests * 100}")
+
+    def test_arguments(self):
+
+        # Append arguments
+        if len(sys.argv) > 1:
+            for arg in sys.argv[1:]:
+                self.args.append(arg)
+    
+        file_to_parse = open(f"{PATH_TO_TEST_FOLDER}basic/read_test.src")
+        status = subprocess.run(self.args, stdin=file_to_parse, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
+
+        # Remove argument for further testing
+        self.args = [arg for arg in self.args if arg not in sys.argv]
+
+        return status
+
+
+    def mock_arguments(self, args, expected_status):
+
+        _args = ['test.py']
+        for arg in args:
+            _args.append(arg)
+
+        with patch('sys.argv', _args):
+            status = self.test_arguments()
+            if status == expected_status:
+                print(f'Test case {args} -> OK')
+            else:
+                print(f"Test case {args} -> Failed : {status}")
+                
+    def test_mock_arguments(self):
         
-        if len(result) == 0:
-            print(f"{filename} : OK")
-            cnt_passed += 1
-        else:
-            print(f"{filename} : {result}")
-            cnt_failed += 1
+        self.mock_arguments(['--h'], 10)
+        self.mock_arguments(['--help'], 0)
+        self.mock_arguments(['--stat'], 10)
+        self.mock_arguments(['--stata'], 10)
+        self.mock_arguments(['--stats'], 10)
+        self.mock_arguments(['--stats'], 10)
+        self.mock_arguments(['--stats=file'], 0)
 
-print("----------------")
-print(f"Number of tests : {cnt_tests}")
-print(f"Passed : {cnt_passed}")
-print(f"Failed : {cnt_failed}")
-print(f"Success : {cnt_passed / cnt_tests * 100}")
+        
+
+test = Test()
+test.test_directory(f"{PATH_TO_TEST_FOLDER}basic/")
+# test.test(PATH_TO_TEST_FOLDER, os.listdir(PATH_TO_TEST_FOLDER))
+# test.test_mock_arguments()
+test.stats()
