@@ -49,34 +49,35 @@ class Test():
                 file_to_parse = open(f"{path}{filename}")
                 status = subprocess.run(self.args, stdin=file_to_parse, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
 
-                # # Check the return code
-                if status != 0:
-                    with open(f"{path}{filename[:-4]}.rc", "r") as f:
-                        line = f.readline()
-                        if int(line) != status:
-                            if(set_output):
-                                print(f"{filename} : Failed")
+                # Compare the return code
+                with open(f"{path}{filename[:-4]}.rc", "r") as f:
+                    line = f.readline()
+                    if int(line) != status:
+                        if set_output:
+                            print(f"{filename} : Failed")
                             
-                            self.cnt_failed += 1
-                        else:
-                            if(set_output):
-                                print(f"{filename} : OK")
-                            
+                        self.cnt_failed += 1
+                        continue
+                    else:
+                        if set_output:
+                            print(f"{filename} : OK")
+                        
+                        if status != 0:
                             self.cnt_passed += 1
-                    continue
+                            continue
 
                 # Compare xml files
                 result = main.diff_files("output.xml",
-                        f"{path}/{filename[:-4]}.out",
+                        f"{path}{filename[:-4]}.out",
                         diff_options={'F' : 0.5, 'ratio_mode' : 'fast'})
                 
                 if len(result) == 0:
-                    if(set_output):
+                    if set_output:
                         print(f"{filename} : OK")
                     
                     self.cnt_passed += 1
                 else:
-                    if(set_output):
+                    if set_output:
                         print(f"{filename} : {result}")
                     
                     self.cnt_failed += 1
@@ -122,18 +123,26 @@ class Test():
                 
     def test_mock_arguments(self):
         
+        file_names = ["file"]
+
         self.mock_arguments(['--h'], 10)
         self.mock_arguments(['--help'], 0)
         self.mock_arguments(['--stat'], 10)
         self.mock_arguments(['--stata'], 10)
         self.mock_arguments(['--stats'], 10)
         self.mock_arguments(['--stats'], 10)
-        self.mock_arguments(['--stats=file'], 0)
-
+        self.mock_arguments([f"--stats={file_names[0]}"], 0)
+        self.mock_arguments([f"--stats={file_names[0]}", "--help"], 10)
+        self.mock_arguments([f"--loc --stats={file_names[0]}"], 10)
+        # self.mock_arguments([f'--stats={file_names[1]}'], 0)
+        # self.mock_arguments([f"--stats={file_names[1]}", "--help"], 10)
+        # self.mock_arguments([f"--stats={file_names[1]}", f"--stats={file_names[1]}"], 11)
         
+        for f in file_names:
+            os.remove(f)
 
 test = Test()
-test.test_directory(f"{PATH_TO_TEST_FOLDER}basic/")
-# test.test(PATH_TO_TEST_FOLDER, os.listdir(PATH_TO_TEST_FOLDER))
+# test.test_directory(f"{PATH_TO_TEST_FOLDER}defvar/")
+test.test(PATH_TO_TEST_FOLDER, os.listdir(PATH_TO_TEST_FOLDER))
 # test.test_mock_arguments()
-test.stats()
+# test.stats()
