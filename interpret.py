@@ -9,6 +9,10 @@ if __name__ == "__main__":
         interpreter.parse()
 
     except Exception as e:
-        print(f"[ERROR] {e.msg}")
+        if hasattr(e, "msg"):
+            print(f"[ERROR] {e.msg}")
+        else:
+            print(f"[INTERNAL ERROR] {e}")
+
         if hasattr(e, "exit_status"):
             exit(e.exit_status)
