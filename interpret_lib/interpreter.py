@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+import re
 from interpret_lib.errorhandler import (
     InputFileError,
     IllegalXMLFormat,
@@ -35,9 +36,14 @@ class Interpreter:
             self.curr_instruction_order += 1
             # Parse instruction
             self.parse_instruction(child)
+            self.curr_argument_order = 0
             # Parse instruction's arguments
             for argument in child:
+                self.curr_argument_order += 1
                 self.parse_argument(argument)
+
+        for child in self.root:
+            pass
 
     def parse_root(self):
         if self.root.tag != "program":
@@ -64,10 +70,14 @@ class Interpreter:
             )
 
         if "order" not in instruction.attrib:
-            raise UnexpectedXMLStructure('Missing attribute "order"')
+            raise UnexpectedXMLStructure(
+                'Missing attribute "order" for instruction element'
+            )
 
         if "opcode" not in instruction.attrib:
-            raise UnexpectedXMLStructure('Missing attribute "opcode"')
+            raise UnexpectedXMLStructure(
+                'Missing attribute "opcode" for instruction element'
+            )
 
         try:
             order = int(instruction.attrib["order"])
@@ -92,4 +102,37 @@ class Interpreter:
         self.curr_instruction = instruction.attrib["opcode"].upper()
 
     def parse_argument(self, argument):
-        pass
+        if not re.match("^arg[0-9]$", argument.tag):
+            raise UnexpectedXMLStructure(
+                'Unknown xml element "{}"'.format(argument.tag)
+            )
+
+        try:
+            if int(argument.tag[-1]) != self.curr_argument_order:
+                raise UnexpectedXMLStructure(
+                    'Wrong order of argument element "{}"'.format(argument.tag)
+                )
+        except ValueError:
+            raise UnexpectedXMLStructure(
+                'Order of the argument "{}" has illegal order value {}'.format(
+                    argument.tag, argument.tag[-1]
+                )
+            )
+
+        if "type" not in argument.attrib:
+            raise UnexpectedXMLStructure(
+                'Missing attribute "type" for argument element'
+            )
+
+        if argument.attrib["type"] not in [
+            "int",
+            "bool",
+            "string",
+            "nil",
+            "label",
+            "type",
+            "var",
+        ]:
+            raise UnexpectedXMLStructure(
+                'Unknown "{}" type for argument element'.format(argument.attrib["type"])
+            )
