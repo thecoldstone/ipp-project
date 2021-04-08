@@ -29,6 +29,7 @@ class Interpreter:
         # Parse root node
         self.parse_root()
 
+        """Syntax analyze"""
         # Parse instructions
         self.curr_instruction = None
         self.curr_instruction_order = 0
@@ -42,6 +43,7 @@ class Interpreter:
                 self.curr_argument_order += 1
                 self.parse_argument(argument)
 
+        "Semantic analyze"
         for child in self.root:
             pass
 

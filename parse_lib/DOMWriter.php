@@ -8,7 +8,8 @@
  * @author Nikita Zhukov
  */
 
-class DOMWriter {
+class DOMWriter
+{
 
     public $dom;
     private $FILE_NAME = "output.xml";
@@ -51,12 +52,12 @@ class DOMWriter {
         $instructionAttOpcode = new DOMAttr("opcode", $opcode);
 
         $instruction->setAttributeNode($instructionAttOrder);
-        $instruction->setAttributeNode($instructionAttOpcode); 
-        
+        $instruction->setAttributeNode($instructionAttOpcode);
+
         $cnt = 0;
-        foreach($arguments as $key => $value) {
+        foreach ($arguments as $key => $value) {
             $cnt++;
-            foreach($value as $k => $v) {
+            foreach ($value as $k => $v) {
                 $argument = $this->dom->createElement("arg{$cnt}", $v);
                 $argument->setAttribute("type", $k);
                 $instruction->appendChild($argument);
@@ -72,5 +73,12 @@ class DOMWriter {
     {
         $this->dom->appendChild($this->root);
         $this->dom->save($this->FILE_NAME);
+    }
+    /**
+     * Print out xml file
+     */
+    public function print_out()
+    {
+        echo $this->dom->saveXML();
     }
 }

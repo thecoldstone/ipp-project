@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Project : Parser implementation for IPPCode21
  * 
@@ -6,7 +7,7 @@
  * 
  * @author Nikita Zhukov
  * @todo Amend checkers to return only booleans
- */ 
+ */
 
 require "DOMWriter.php";
 require "parserInitHandler.php";
@@ -101,6 +102,7 @@ class Parser extends ErrorHandler
 
         $this->write_to_files();
         $this->dom->save();
+        $this->dom->print_out();
     }
 
     /**
