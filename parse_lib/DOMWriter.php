@@ -74,6 +74,7 @@ class DOMWriter
         $this->dom->appendChild($this->root);
         $this->dom->save($this->FILE_NAME);
     }
+
     /**
      * Print out xml file
      */

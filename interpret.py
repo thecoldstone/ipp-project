@@ -12,7 +12,8 @@ if __name__ == "__main__":
         if hasattr(e, "msg"):
             print(f"[ERROR] {e.msg}")
         else:
-            print(f"[INTERNAL ERROR] {e}")
+            # print(f"[INTERNAL ERROR] {e}")
+            raise
 
         if hasattr(e, "exit_status"):
             exit(e.exit_status)

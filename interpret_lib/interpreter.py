@@ -6,6 +6,7 @@ from interpret_lib.errorhandler import (
     UnexpectedXMLStructure,
 )
 from interpret_lib.ippcode21 import IppCode21
+from interpret_lib.intsruction import Instruction
 
 
 class Interpreter:
@@ -29,22 +30,17 @@ class Interpreter:
         # Parse root node
         self.parse_root()
 
+        self.instructions = []
         """Syntax analyze"""
         # Parse instructions
-        self.curr_instruction = None
-        self.curr_instruction_order = 0
         for child in self.root:
-            self.curr_instruction_order += 1
-            # Parse instruction
-            self.parse_instruction(child)
-            self.curr_argument_order = 0
-            # Parse instruction's arguments
-            for argument in child:
-                self.curr_argument_order += 1
-                self.parse_argument(argument)
+            inst = Instruction()
+            inst.parse(child)
+            inst.parse_args(child)
+            self.instructions.append(inst)
 
-        "Semantic analyze"
-        for child in self.root:
+        "Semantic + Syntax analyzes"
+        for inst in self.instructions:
             pass
 
     def parse_root(self):
@@ -63,78 +59,4 @@ class Interpreter:
         ):
             raise UnexpectedXMLStructure(
                 f'Not supported {list(self.root.attrib.keys())} attribute(s) for root element "program"'
-            )
-
-    def parse_instruction(self, instruction):
-        if instruction.tag != "instruction":
-            raise UnexpectedXMLStructure(
-                f"{instruction.tag} cannot represent instruction"
-            )
-
-        if "order" not in instruction.attrib:
-            raise UnexpectedXMLStructure(
-                'Missing attribute "order" for instruction element'
-            )
-
-        if "opcode" not in instruction.attrib:
-            raise UnexpectedXMLStructure(
-                'Missing attribute "opcode" for instruction element'
-            )
-
-        try:
-            order = int(instruction.attrib["order"])
-            if order != self.curr_instruction_order:
-                raise UnexpectedXMLStructure(
-                    'Order of the instruction "{}" does not correspond to correct order'.format(
-                        instruction.attrib["opcode"]
-                    )
-                )
-        except ValueError:
-            raise UnexpectedXMLStructure(
-                'Order of the instruction "{}" has illegal order value {}'.format(
-                    instruction.attrib["opcode"], instruction.attrib["order"]
-                )
-            )
-
-        if instruction.attrib["opcode"].upper() not in IppCode21.instructions:
-            raise UnexpectedXMLStructure(
-                'Unknown instrucion "{}"'.format(instruction.attrib["opcode"])
-            )
-
-        self.curr_instruction = instruction.attrib["opcode"].upper()
-
-    def parse_argument(self, argument):
-        if not re.match("^arg[0-9]$", argument.tag):
-            raise UnexpectedXMLStructure(
-                'Unknown xml element "{}"'.format(argument.tag)
-            )
-
-        try:
-            if int(argument.tag[-1]) != self.curr_argument_order:
-                raise UnexpectedXMLStructure(
-                    'Wrong order of argument element "{}"'.format(argument.tag)
-                )
-        except ValueError:
-            raise UnexpectedXMLStructure(
-                'Order of the argument "{}" has illegal order value {}'.format(
-                    argument.tag, argument.tag[-1]
-                )
-            )
-
-        if "type" not in argument.attrib:
-            raise UnexpectedXMLStructure(
-                'Missing attribute "type" for argument element'
-            )
-
-        if argument.attrib["type"] not in [
-            "int",
-            "bool",
-            "string",
-            "nil",
-            "label",
-            "type",
-            "var",
-        ]:
-            raise UnexpectedXMLStructure(
-                'Unknown "{}" type for argument element'.format(argument.attrib["type"])
             )
