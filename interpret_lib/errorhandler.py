@@ -10,19 +10,19 @@ class ExceptionBase(Exception):
         elif exit_status == 32:
             self.msg = "Unexpected xml structure"
         elif exit_status == 52:
-            self.msg = ""
+            self.msg = "Semantic error"
         elif exit_status == 53:
-            self.msg = ""
+            self.msg = "Illegal type of operand"
         elif exit_status == 54:
-            self.msg = ""
+            self.msg = "Undefined variable"
         elif exit_status == 55:
-            self.msg = ""
+            self.msg = "Frame does not exist"
         elif exit_status == 56:
-            self.msg = ""
+            self.msg = "Missing value"
         elif exit_status == 57:
-            self.msg = ""
+            self.msg = "Value error"
         elif exit_status == 58:
-            self.msg = ""
+            self.msg = "Illegal operations with string literal"
         elif exit_status == 99:
             self.msg = "Internal error"
 

@@ -4,6 +4,7 @@ from interpret_lib.errorhandler import (
     InputFileError,
     IllegalXMLFormat,
     UnexpectedXMLStructure,
+    RunTimeTypeError,
 )
 
 
@@ -44,3 +45,46 @@ class Argument:
 
         self.type = arg.attrib["type"]
         self.data = arg.text
+
+    def verify_var(self):
+        if self.type != "var":
+            raise UnexpectedXMLStructure(f"Illegal type for {self.data}")
+        if self.data is None or not re.match(
+            "^(GF|LF|TF)@([a-z]|[A-Z]|[\_\-\$\&\%\*\?\!])(\w|[\_\-\$\&\%\*\?\!])*$",
+            self.data,
+        ):
+            raise UnexpectedXMLStructure(f'Illegal variable declaration "{self.data}"')
+
+    def verify_symb(self):
+        if self.type in ["int", "bool", "string", "nil", "float"]:
+            if self.type == "int":
+                if self.data is None or not re.match("^([+-]?[0-9]*$)", self.data):
+                    raise UnexpectedXMLStructure(
+                        f"Illegal variable {self.data} for int type"
+                    )
+            elif self.type == "bool":
+                if self.data not in ["false", "true"]:
+                    raise UnexpectedXMLStructure(
+                        f"Illegal variable {self.data} for bool type"
+                    )
+            elif self.type == "string":
+                if self.data is None:
+                    self.data = ""
+                # TODO Finish
+            elif self.type == "nil":
+                if self.data != "nil":
+                    raise UnexpectedXMLStructure(
+                        f"Illegal variable {self.data} for bool type"
+                    )
+            elif self.type == "float":
+                pass
+                # TODO Finish
+
+        elif self.type == "var":
+            self.verify_var()
+        else:
+            raise RunTimeTypeError("Wrong symbol type")
+
+    def verify_type(self):
+        if self.type != "type":
+            raise RunTimeTypeError("Wrong argument type")

@@ -10,7 +10,10 @@ if __name__ == "__main__":
 
     except Exception as e:
         if hasattr(e, "msg"):
-            print(f"[ERROR] {e.msg}")
+            if e.exit_status > 52:
+                print(f"[RUNTIME ERROR] {e.msg}")
+            else:
+                print(f"[ERROR] {e.msg}")
         else:
             # print(f"[INTERNAL ERROR] {e}")
             raise

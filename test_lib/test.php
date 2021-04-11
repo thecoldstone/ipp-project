@@ -16,6 +16,13 @@ class Test
 
     private $path;
 
+    private $JEXAMXML_MERLIN = '/pub/courses/ipp/jexamxml/jexamxml.jar';
+    private $JEXAMCFG_MERLIN = '/pub/courses/ipp/jexamxml/options';
+
+    private $JEXAMXML_MAC    = '/jexamxml/jexamxml.jar';
+    private $JEXAMCFG_MAC    = '/jexamxml/options';
+
+
     public function __construct()
     {
         $this->path = getcwd();
@@ -25,8 +32,8 @@ class Test
         $this->int_script = $this->path . '/interpret.py';
         $this->parse_only = false;
         $this->int_only = false;
-        $this->jexamxml = $this->path . '/pub/courses/ipp/jexamxml/jexamxml.jar';
-        $this->jexamcfg = $this->path . '/pub/courses/ipp/jexamxml/options';
+        $this->jexamxml = $this->path . $this->JEXAMXML_MAC;
+        $this->jexamcfg = $this->path . $this->JEXAMCFG_MAC;
     }
 
     public function run()

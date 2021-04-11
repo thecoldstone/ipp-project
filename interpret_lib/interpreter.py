@@ -31,7 +31,7 @@ class Interpreter:
         self.parse_root()
 
         self.instructions = []
-        """Syntax analyze"""
+        """Syntax analyze of XML file"""
         # Parse instructions
         for child in self.root:
             inst = Instruction()
@@ -39,9 +39,9 @@ class Interpreter:
             inst.parse_args(child)
             self.instructions.append(inst)
 
-        "Semantic + Syntax analyzes"
-        for inst in self.instructions:
-            pass
+        """Interpreting code"""
+        # while True:
+        #     pass
 
     def parse_root(self):
         if self.root.tag != "program":

@@ -75,23 +75,28 @@ class Instruction(object):
         if self.opcode in ["MOVE", "INT2CHAR", "STRLEN", "TYPE", "NOT"]:
             # OPCODE <var> <symb>
             self.verify_tockens(2)
-            self.verify_var(arg[0])
-            # self.verify_symb(arg[1])
+            self.args[0].verify_var()
+            self.args[1].verify_symb()
         elif self.opcode in ["CREATEFRAME", "PUSHFRAME", "POPFRAME", "RETURN", "BREAK"]:
             # OPCODE
             self.verify_tockens()
         elif self.opcode in ["DEFVAR", "POPS"]:
             # OPCODE <var>
             self.verify_tockens(1)
+            self.args[0].verify_var()
         elif self.opcode in ["CALL", "LABEL", "JUMP"]:
             # OPCODE <label>
             self.verify_tockens(1)
+            # self.args[0].verify_label()
         elif self.opcode in ["JUMPIFEQ", "JUMPIFNEQ"]:
             # OPCODE <label> <symb1> <symb2>
             self.verify_tockens(3)
+            self.args[1].verify_symb()
+            self.args[2].verify_symb()
         elif self.opcode in ["PUSHS", "WRITE", "EXIT", "DPRINT"]:
             # OPCODE <symb>
             self.verify_tockens(1)
+            self.args[0].verify_symb()
         elif self.opcode in [
             "ADD",
             "SUB",
@@ -109,19 +114,20 @@ class Instruction(object):
         ]:
             # OPCODE <var> <symb1> <symb2>
             self.verify_tockens(3)
+            self.args[0].verify_var()
+            self.args[1].verify_symb()
+            self.args[2].verify_symb()
         elif self.opcode in ["READ"]:
             # OPCODE <var> <type>
             self.verify_tockens(2)
+            self.args[1].verify_var()
+            self.args[2].verify_type()
 
     def verify_tockens(self, expected=0):
         if len(self.args) != expected:
             raise UnexpectedXMLStructure(
                 'Wrong amount of arguments for instruction "{}"'.format(self.opcode)
             )
-
-    def verify_var(self, arg: Argument):
-        if arg.type != "var":
-            raise RunTimeTypeError("Wrong type")
 
     # def __repr__(self):
     #     return f"Instruction : {self.opcode} {["arg{}" for i in self.args.keys]}"
