@@ -11,7 +11,7 @@
 
 trait argumentHandler
 {
-    protected $test_directory;
+    public $test_directory;
     protected $recursive;
     protected $parse_script;
     protected $int_script;

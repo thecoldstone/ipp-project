@@ -4,17 +4,22 @@ from interpret_lib.errorhandler import (
     InputFileError,
     IllegalXMLFormat,
     UnexpectedXMLStructure,
+    SemanticError,
 )
 from interpret_lib.ippcode21 import IppCode21
 from interpret_lib.intsruction import Instruction
+from interpret_lib.stats import Stats
+from interpret_lib.stack import Stack
+from interpret_lib.frames import GlobalFrame, TemporaryFrame, LocalFrame
 
 
 class Interpreter:
-    def __init__(self, source_file=None, input_file=None):
+    def __init__(self, source_file=None, input_file=None, stats=None):
         self.source_file = source_file
         self.input_file = input_file
+        self.stats = Stats(stats)
 
-    def get_xml_tree(self):
+    def __get_xml_tree__(self):
         try:
             tree = ET.parse(self.source_file)
         except IOError:
@@ -24,26 +29,7 @@ class Interpreter:
 
         return tree
 
-    def parse(self):
-        tree = self.get_xml_tree()
-        self.root = tree.getroot()
-        # Parse root node
-        self.parse_root()
-
-        self.instructions = []
-        """Syntax analyze of XML file"""
-        # Parse instructions
-        for child in self.root:
-            inst = Instruction()
-            inst.parse(child)
-            inst.parse_args(child)
-            self.instructions.append(inst)
-
-        """Interpreting code"""
-        # while True:
-        #     pass
-
-    def parse_root(self):
+    def __parse_root__(self):
         if self.root.tag != "program":
             raise UnexpectedXMLStructure(f"{self.root.tag} cannot be as a root element")
 
@@ -60,3 +46,49 @@ class Interpreter:
             raise UnexpectedXMLStructure(
                 f'Not supported {list(self.root.attrib.keys())} attribute(s) for root element "program"'
             )
+
+    def parse_xml_file(self):
+        tree = self.__get_xml_tree__()
+        self.root = tree.getroot()
+        # Parse root node
+        self.__parse_root__()
+
+        self.instructions = {}
+        self.labels = {}
+        """Syntax analyze of XML file"""
+        # Parse instructions
+        for child in self.root:
+            inst = Instruction()
+            inst.parse(child)
+            inst.parse_args(child)
+            self.instructions[inst.order] = inst
+
+            if inst.opcode == "LABEL":
+                if inst.label in [v.label for k, v in self.labels.items()]:
+                    raise SemanticError("Redefinition of label")
+                else:
+                    self.labels[inst.order] = inst
+
+    def interpret(self):
+        if not self.root:
+            self.parse_xml_file()
+
+        _Stack = Stack()
+        _Global_Frame = GlobalFrame()
+
+        """Interpreting code"""
+        curr_inst = 1
+        while True:
+
+            if not self.instructions:
+                break
+
+            current_instruction = self.instructions.pop(curr_inst)
+
+            if current_instruction.opcode == "MOVE":
+                pass
+
+            elif current_instruction.opcode == "WRITE":
+                pass
+
+            curr_inst += 1

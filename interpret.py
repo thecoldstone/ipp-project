@@ -4,9 +4,10 @@ from interpret_lib.interpreter import Interpreter
 if __name__ == "__main__":
 
     try:
-        args = args_parser()
-        interpreter = Interpreter(args[0], args[1])
-        interpreter.parse()
+        source_file, input_file, stats = args_parser()
+        interpreter = Interpreter(source_file, input_file, stats)
+        interpreter.parse_xml_file()
+        interpreter.interpret()
 
     except Exception as e:
         if hasattr(e, "msg"):

@@ -88,3 +88,11 @@ class Argument:
     def verify_type(self):
         if self.type != "type":
             raise RunTimeTypeError("Wrong argument type")
+
+    def verify_label(self):
+        if self.type != "label":
+            raise UnexpectedXMLStructure(f"Label type has been expected")
+        if self.data is None or not re.match(
+            "([a-z]|[A-Z]|[\_\-\$\&\%\*\?\!])(\w|[\_\-\$\&\%\*\?\!])*$", self.data
+        ):
+            raise UnexpectedXMLStructure(f"Illegal label declaration")

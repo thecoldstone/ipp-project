@@ -8,13 +8,49 @@ from interpret_lib.ippcode21 import IppCode21
 from interpret_lib.instructionargument import Argument
 
 
-class Instruction(object):
+class Variable:
+    def __init__(self, name: str, vtype: str):
+        self.name = name
+        self.vtype = vtype
+
+    @property
+    def name(self):
+        return self.__name
+
+    @name.setter
+    def name(self, name: str):
+        self.__name = name
+
+    @property
+    def vtype(self):
+        return self.__vtype
+
+    @vtype.setter
+    def vtype(self, vtype: str):
+        self.__vtype = vtype
+
+
+class Symbol(Variable):
+    def __init__(self, name: str, vtype: str):
+        super().__init__(name, vtype)
+
+
+class InstructionProperties:
+    def __init__(self):
+        self.opcode = None
+        self.order  = None
+        self.var    = None
+        self.symb1  = None
+        self.symb2  = None
+        self.label  = None
+        self.type   = None
+
+
+class Instruction(InstructionProperties):
     order = 1
 
     def __init__(self):
-        self.opcode = None
-        self.order = None
-        self.args = None
+        super().__init__()
 
     def parse(self, instruction: ET.Element):
         if instruction.tag != "instruction":
@@ -33,7 +69,7 @@ class Instruction(object):
             )
 
         try:
-            if int(instruction.attrib["order"]) != Instruction.order:
+            if int(instruction.attrib["order"]) < Instruction.order:
                 raise UnexpectedXMLStructure(
                     'Wrong order of instruction "{}"'.format(
                         instruction.attrib["opcode"]
@@ -57,7 +93,7 @@ class Instruction(object):
         Instruction.order += 1
 
     def parse_args(self, instruction: ET.Element):
-        self.args = []
+        self.__args = []
 
         cur_order = 1
         for child in instruction:
@@ -66,7 +102,7 @@ class Instruction(object):
                 raise UnexpectedXMLStructure(
                     'Wrong order of argument element "{}"'.format(arg.data)
                 )
-            self.args.append(arg)
+            self.__args.append(arg)
             cur_order += 1
 
         self.verify()
@@ -75,28 +111,38 @@ class Instruction(object):
         if self.opcode in ["MOVE", "INT2CHAR", "STRLEN", "TYPE", "NOT"]:
             # OPCODE <var> <symb>
             self.verify_tockens(2)
-            self.args[0].verify_var()
-            self.args[1].verify_symb()
+            self.__args[0].verify_var()
+            self.__args[1].verify_symb()
+            self.var = Variable(self.__args[0].data, self.__args[0].type)
+            self.symb1 = Symbol(self.__args[1].data, self.__args[1].type)
+
         elif self.opcode in ["CREATEFRAME", "PUSHFRAME", "POPFRAME", "RETURN", "BREAK"]:
             # OPCODE
             self.verify_tockens()
         elif self.opcode in ["DEFVAR", "POPS"]:
             # OPCODE <var>
             self.verify_tockens(1)
-            self.args[0].verify_var()
+            self.__args[0].verify_var()
+            self.var = Variable(self.__args[0].data, self.__args[0].type)
         elif self.opcode in ["CALL", "LABEL", "JUMP"]:
             # OPCODE <label>
             self.verify_tockens(1)
-            # self.args[0].verify_label()
+            self.__args[0].verify_label()
+            self.label = self.__args[0].data
         elif self.opcode in ["JUMPIFEQ", "JUMPIFNEQ"]:
             # OPCODE <label> <symb1> <symb2>
             self.verify_tockens(3)
-            self.args[1].verify_symb()
-            self.args[2].verify_symb()
+            self.__args[0].verify_label()
+            self.__args[1].verify_symb()
+            self.__args[2].verify_symb()
+            self.label = self.__args[0].data
+            self.symb1 = Symbol(self.__args[1].data, self.__args[1].type)
+            self.symb2 = Symbol(self.__args[2].data, self.__args[2].type)
         elif self.opcode in ["PUSHS", "WRITE", "EXIT", "DPRINT"]:
             # OPCODE <symb>
             self.verify_tockens(1)
-            self.args[0].verify_symb()
+            self.__args[0].verify_symb()
+            self.symb1 = Symbol(self.__args[0].data, self.__args[0].type)
         elif self.opcode in [
             "ADD",
             "SUB",
@@ -114,20 +160,22 @@ class Instruction(object):
         ]:
             # OPCODE <var> <symb1> <symb2>
             self.verify_tockens(3)
-            self.args[0].verify_var()
-            self.args[1].verify_symb()
-            self.args[2].verify_symb()
+            self.__args[0].verify_var()
+            self.__args[1].verify_symb()
+            self.__args[2].verify_symb()
+            self.var = Variable(self.__args[0].data, self.__args[0].type)
+            self.symb1 = Symbol(self.__args[1].data, self.__args[1].type)
+            self.symb2 = Symbol(self.__args[2].data, self.__args[2].type)
         elif self.opcode in ["READ"]:
             # OPCODE <var> <type>
             self.verify_tockens(2)
-            self.args[1].verify_var()
-            self.args[2].verify_type()
+            self.__args[1].verify_var()
+            self.__args[2].verify_type()
+            self.var = Variable(self.__args[0].data, self.__args[0].type)
+            self.type = self.__args[1].data
 
     def verify_tockens(self, expected=0):
-        if len(self.args) != expected:
+        if len(self.__args) != expected:
             raise UnexpectedXMLStructure(
                 'Wrong amount of arguments for instruction "{}"'.format(self.opcode)
             )
-
-    # def __repr__(self):
-    #     return f"Instruction : {self.opcode} {["arg{}" for i in self.args.keys]}"

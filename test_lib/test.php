@@ -9,10 +9,12 @@
  */
 
 require "test_lib/argumentHandler.php";
+require "test_lib/testData.php";
 
 class Test
 {
     use argumentHandler;
+    use testDataInitializer;
 
     private $path;
 
@@ -21,7 +23,6 @@ class Test
 
     private $JEXAMXML_MAC    = '/jexamxml/jexamxml.jar';
     private $JEXAMCFG_MAC    = '/jexamxml/options';
-
 
     public function __construct()
     {
@@ -36,7 +37,24 @@ class Test
         $this->jexamcfg = $this->path . $this->JEXAMCFG_MAC;
     }
 
+    public function setup()
+    {
+        $this->init_data($this->test_directory, $this->recursive);
+    }
+
     public function run()
+    {
+        foreach ($this->test_data as $file) {
+            echo $file . "\n";
+        }
+    }
+
+    private function parse()
+    {
+        //  TODO
+    }
+
+    private function interpret()
     {
         // TODO
     }
