@@ -46,6 +46,9 @@ class Argument:
         self.type = arg.attrib["type"]
         self.data = arg.text
 
+    def get_frame(self):
+        pass
+
     def verify_var(self):
         if self.type != "var":
             raise UnexpectedXMLStructure(f"Illegal type for {self.data}")

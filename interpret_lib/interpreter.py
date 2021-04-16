@@ -10,7 +10,7 @@ from interpret_lib.ippcode21 import IppCode21
 from interpret_lib.intsruction import Instruction
 from interpret_lib.stats import Stats
 from interpret_lib.stack import Stack
-from interpret_lib.frames import GlobalFrame, TemporaryFrame, LocalFrame
+from interpret_lib.frames import Frames
 
 
 class Interpreter:
@@ -74,21 +74,60 @@ class Interpreter:
             self.parse_xml_file()
 
         _Stack = Stack()
-        _Global_Frame = GlobalFrame()
+        _Frames = Frames()
 
         """Interpreting code"""
-        curr_inst = 1
+        index = 1
         while True:
 
             if not self.instructions:
                 break
 
-            current_instruction = self.instructions.pop(curr_inst)
+            _instruction = self.instructions.pop(index)
 
-            if current_instruction.opcode == "MOVE":
+            if _instruction.opcode == "MOVE":
+                _Frames.move(_instruction.var, _instruction.symb1)
+            elif _instruction.opcode == "CREATEFRAME":
+                _Frames.create_frame()
+            elif _instruction.opcode == "PUSHFRAME":
                 pass
-
-            elif current_instruction.opcode == "WRITE":
+            elif _instruction.opcode == "POPFRAME":
                 pass
+            elif _instruction.opcode == "DEFVAR":
+                _Frames.defvar(_instruction.var)
+            elif _instruction.opcode == "CALL":
+                pass
+            elif _instruction.opcode == "RETURN":
+                pass
+            elif _instruction.opcode == "WRITE":
+                pass
+            elif _instruction.opcode == "ADD":
+                _Frames.math(
+                    var=_instruction.var,
+                    symb1=_instruction.symb1,
+                    symb2=_instruction.symb2,
+                    op="ADD",
+                )
+            elif _instruction.opcode == "SUB":
+                _Frames.math(
+                    var=_instruction.var,
+                    symb1=_instruction.symb1,
+                    symb2=_instruction.symb2,
+                    op="SUB",
+                )
+            elif _instruction.opcode == "MUL":
+                _Frames.math(
+                    var=_instruction.var,
+                    symb1=_instruction.symb1,
+                    symb2=_instruction.symb2,
+                    op="MUL",
+                )
+            elif _instruction.opcode == "IDIV":
+                _Frames.math(
+                    var=_instruction.var,
+                    symb1=_instruction.symb1,
+                    symb2=_instruction.symb2,
+                    op="IDIV",
+                )
 
-            curr_inst += 1
+            index += 1

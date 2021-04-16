@@ -6,44 +6,18 @@ from interpret_lib.errorhandler import (
 )
 from interpret_lib.ippcode21 import IppCode21
 from interpret_lib.instructionargument import Argument
-
-
-class Variable:
-    def __init__(self, name: str, vtype: str):
-        self.name = name
-        self.vtype = vtype
-
-    @property
-    def name(self):
-        return self.__name
-
-    @name.setter
-    def name(self, name: str):
-        self.__name = name
-
-    @property
-    def vtype(self):
-        return self.__vtype
-
-    @vtype.setter
-    def vtype(self, vtype: str):
-        self.__vtype = vtype
-
-
-class Symbol(Variable):
-    def __init__(self, name: str, vtype: str):
-        super().__init__(name, vtype)
+from interpret_lib.tockens import Variable, Symbol
 
 
 class InstructionProperties:
     def __init__(self):
         self.opcode = None
-        self.order  = None
-        self.var    = None
-        self.symb1  = None
-        self.symb2  = None
-        self.label  = None
-        self.type   = None
+        self.order = None
+        self.var = None
+        self.symb1 = None
+        self.symb2 = None
+        self.label = None
+        self.type = None
 
 
 class Instruction(InstructionProperties):
@@ -107,15 +81,24 @@ class Instruction(InstructionProperties):
 
         self.verify()
 
+    def __create_variable(self, var: str, vtype: str):
+        frame, name = var.split("@")
+        return Variable(name, vtype, frame)
+
+    def __create_symbol(self, symb: str, vtype: str):
+        if vtype == "var":
+            return self.__create_variable(symb, vtype)
+        else:
+            return Symbol(symb, vtype)
+
     def verify(self):
         if self.opcode in ["MOVE", "INT2CHAR", "STRLEN", "TYPE", "NOT"]:
             # OPCODE <var> <symb>
             self.verify_tockens(2)
             self.__args[0].verify_var()
             self.__args[1].verify_symb()
-            self.var = Variable(self.__args[0].data, self.__args[0].type)
-            self.symb1 = Symbol(self.__args[1].data, self.__args[1].type)
-
+            self.var = self.__create_variable(self.__args[0].data, self.__args[0].type)
+            self.symb1 = self.__create_symbol(self.__args[1].data, self.__args[1].type)
         elif self.opcode in ["CREATEFRAME", "PUSHFRAME", "POPFRAME", "RETURN", "BREAK"]:
             # OPCODE
             self.verify_tockens()
@@ -123,7 +106,7 @@ class Instruction(InstructionProperties):
             # OPCODE <var>
             self.verify_tockens(1)
             self.__args[0].verify_var()
-            self.var = Variable(self.__args[0].data, self.__args[0].type)
+            self.var = self.__create_variable(self.__args[0].data, self.__args[0].type)
         elif self.opcode in ["CALL", "LABEL", "JUMP"]:
             # OPCODE <label>
             self.verify_tockens(1)
@@ -136,17 +119,17 @@ class Instruction(InstructionProperties):
             self.__args[1].verify_symb()
             self.__args[2].verify_symb()
             self.label = self.__args[0].data
-            self.symb1 = Symbol(self.__args[1].data, self.__args[1].type)
-            self.symb2 = Symbol(self.__args[2].data, self.__args[2].type)
+            self.symb1 = self.__create_symbol(self.__args[1].data, self.__args[1].type)
+            self.symb2 = self.__create_symbol(self.__args[2].data, self.__args[2].type)
         elif self.opcode in ["PUSHS", "WRITE", "EXIT", "DPRINT"]:
             # OPCODE <symb>
             self.verify_tockens(1)
             self.__args[0].verify_symb()
-            self.symb1 = Symbol(self.__args[0].data, self.__args[0].type)
+            self.symb1 = self.__create_symbol(self.__args[0].data, self.__args[0].type)
         elif self.opcode in [
             "ADD",
             "SUB",
-            "MULL",
+            "MUL",
             "IDIV",
             "LT",
             "GT",
@@ -163,15 +146,15 @@ class Instruction(InstructionProperties):
             self.__args[0].verify_var()
             self.__args[1].verify_symb()
             self.__args[2].verify_symb()
-            self.var = Variable(self.__args[0].data, self.__args[0].type)
-            self.symb1 = Symbol(self.__args[1].data, self.__args[1].type)
-            self.symb2 = Symbol(self.__args[2].data, self.__args[2].type)
+            self.var = self.__create_variable(self.__args[0].data, self.__args[0].type)
+            self.symb1 = self.__create_symbol(self.__args[1].data, self.__args[1].type)
+            self.symb2 = self.__create_symbol(self.__args[2].data, self.__args[2].type)
         elif self.opcode in ["READ"]:
             # OPCODE <var> <type>
             self.verify_tockens(2)
             self.__args[1].verify_var()
             self.__args[2].verify_type()
-            self.var = Variable(self.__args[0].data, self.__args[0].type)
+            self.var = self.__create_variable(self.__args[0].data, self.__args[0].type)
             self.type = self.__args[1].data
 
     def verify_tockens(self, expected=0):

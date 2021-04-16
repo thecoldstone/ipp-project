@@ -2,8 +2,6 @@
 
 require "test_lib/test.php";
 
-ini_set('display_errors', 'stderr');
-
 $test = new Test();
 
 try {
