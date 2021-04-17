@@ -1,3 +1,6 @@
+from typing import Union
+
+
 class Tocken:
     def __init__(self, name=None, value=None, _type=None):
         self.name = name
@@ -28,5 +31,9 @@ class Variable(Tocken):
 
 
 class Symbol(Tocken):
-    def __init__(self, value: str, stype: str):
+    def __init__(self, value: str, stype):
         super().__init__(value=value, _type=stype)
+
+
+SYMBOL_TYPE = Union[Symbol, Variable]
+VARIABLE_TYPE = Union[int, str, bool, None]

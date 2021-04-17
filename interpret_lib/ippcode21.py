@@ -42,3 +42,21 @@ class IppCode21:
         "DPRINT",
         "BREAK",
     ]
+
+    stack_instructions = [
+        "CLEARS",
+        "ADDS",
+        "SUBS",
+        "MULS",
+        "IDIVS",
+        "LTS",
+        "GTS",
+        "EQS",
+        "ANDS",
+        "ORS",
+        "NOTS",
+        "INT2CHARS",
+        "STRI2INTS",
+        "JUMPIFEQS",
+        "JUMPIFNEQS",
+    ]

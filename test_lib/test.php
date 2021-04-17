@@ -70,7 +70,11 @@ class Test
             }
         }
 
-        echo "Passed:$this->passed\nFailed:$this->failed\n";
+        if ($this->passed == 0 && $this->failed == 0)
+            $succuess_ratio = 0;
+        else
+            $succuess_ratio = ($this->passed / ($this->passed + $this->failed)) * 100;
+        echo "Success:$succuess_ratio\nPassed:$this->passed\nFailed:$this->failed\n";
     }
 
     private function parse($file)
@@ -116,24 +120,44 @@ class Test
     private function interpret($file)
     {
         $tmp_file = tmpfile();
-        $command = "python3.8 $this->int_script --source=$file";
 
-        if ($this->_disable_output) {
-            $command = $command . " 2> /dev/null";
+        if (file_exists(substr($file, 0, -3) . "in")) {
+            $input_file = substr($file, 0, -3) . "in";
+            $command = "python $this->int_script --source=$file --input=$input_file";
+        } else {
+            $command = "python $this->int_script --source=$file";
         }
 
-        unset($output);
+        if ($this->_disable_output) {
+            $command = $command . " > tmp.txt";
+        }
+
         exec($command, $output, $rc);
-        fwrite($tmp_file, implode("\n", $output));
 
         $actual_rc = file_get_contents(substr($file, 0, -3) . "rc");
         if ($actual_rc == "") {
             $actual_rc = 0;
         }
 
-        // Do test 
-
-        fclose($tmp_file);
+        if ($rc == $actual_rc) {
+            if ($rc == 0) {
+                $actual_output = substr($file, 0, -3) . "out";
+                $command = "diff $actual_output tmp.txt";
+                exec($command, $output, $dif_rc);
+                if ($dif_rc == 0) {
+                    $this->passed++;
+                } else {
+                    echo "Different files: $file rc:$dif_rc\n";
+                    $this->failed++;
+                }
+            } else {
+                $this->passed++;
+            }
+        } else {
+            echo "Different rc: $file rc: $rc arc: $actual_rc\n";
+            $this->failed++;
+        }
+        exec("rm tmp.txt");
     }
 
     public function build_html()

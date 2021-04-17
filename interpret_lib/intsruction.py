@@ -21,7 +21,7 @@ class InstructionProperties:
 
 
 class Instruction(InstructionProperties):
-    order = 1
+    order_set = set()
 
     def __init__(self):
         super().__init__()
@@ -43,7 +43,10 @@ class Instruction(InstructionProperties):
             )
 
         try:
-            if int(instruction.attrib["order"]) < Instruction.order:
+            if (
+                int(instruction.attrib["order"]) in Instruction.order_set
+                or int(instruction.attrib["order"]) < 0
+            ):
                 raise UnexpectedXMLStructure(
                     'Wrong order of instruction "{}"'.format(
                         instruction.attrib["opcode"]
@@ -56,15 +59,18 @@ class Instruction(InstructionProperties):
                 )
             )
 
-        if instruction.attrib["opcode"].upper() not in IppCode21.instructions:
+        if (
+            instruction.attrib["opcode"].upper() not in IppCode21.instructions
+            and instruction.attrib["opcode"].upper() not in IppCode21.stack_instructions
+        ):
             raise UnexpectedXMLStructure(
                 'Unknown instrucion "{}"'.format(instruction.attrib["opcode"])
             )
 
-        self.order = Instruction.order
+        self.order = int(instruction.attrib["order"])
         self.opcode = instruction.attrib["opcode"]
 
-        Instruction.order += 1
+        Instruction.order_set.add(self.order)
 
     def parse_args(self, instruction: ET.Element):
         self.__args = []
@@ -89,6 +95,8 @@ class Instruction(InstructionProperties):
         if vtype == "var":
             return self.__create_variable(symb, vtype)
         else:
+            if vtype == "bool":
+                symb = True if symb == "true" else False
             return Symbol(symb, vtype)
 
     def verify(self):
@@ -99,7 +107,10 @@ class Instruction(InstructionProperties):
             self.__args[1].verify_symb()
             self.var = self.__create_variable(self.__args[0].data, self.__args[0].type)
             self.symb1 = self.__create_symbol(self.__args[1].data, self.__args[1].type)
-        elif self.opcode in ["CREATEFRAME", "PUSHFRAME", "POPFRAME", "RETURN", "BREAK"]:
+        elif (
+            self.opcode in ["CREATEFRAME", "PUSHFRAME", "POPFRAME", "RETURN", "BREAK"]
+            or self.opcode in IppCode21.stack_instructions
+        ):
             # OPCODE
             self.verify_tockens()
         elif self.opcode in ["DEFVAR", "POPS"]:
@@ -152,8 +163,8 @@ class Instruction(InstructionProperties):
         elif self.opcode in ["READ"]:
             # OPCODE <var> <type>
             self.verify_tockens(2)
-            self.__args[1].verify_var()
-            self.__args[2].verify_type()
+            self.__args[0].verify_var()
+            self.__args[1].verify_type()
             self.var = self.__create_variable(self.__args[0].data, self.__args[0].type)
             self.type = self.__args[1].data
 

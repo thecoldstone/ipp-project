@@ -1,6 +1,7 @@
 import argparse
 import sys
-from interpret_lib.errorhandler import MissingArgError
+import os
+from interpret_lib.errorhandler import MissingArgError, InputFileError
 
 
 def args_parser():
@@ -34,8 +35,8 @@ def args_parser():
 
     args = parser.parse_args()
 
-    source_file = sys.stdin
-    input_file = sys.stdin
+    source_file = None
+    input_file = None
 
     stats = {"file": None, "insts": False, "hot": False, "vars": False}
 
@@ -47,6 +48,8 @@ def args_parser():
             source_file = args.source[0]
 
         if args.input:
+            if not os.path.isfile(args.input[0]):
+                raise InputFileError
             input_file = args.input[0]
 
         if args.stats:

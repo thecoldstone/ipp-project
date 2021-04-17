@@ -31,6 +31,10 @@ class ExceptionBase(Exception):
 
         self.exit_status = exit_status
 
+class ExitRequest(ExceptionBase):
+    def __init__(self, exit_status, msg=None):
+        self.exit_status = exit_status
+        super().__init__(self.exit_status, msg)
 
 class MissingArgError(ExceptionBase):
     def __init__(self, msg=None):

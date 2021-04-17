@@ -1,6 +1,9 @@
 import xml.etree.ElementTree as ET
 import re
+import sys
+import os
 from interpret_lib.errorhandler import (
+    ExitRequest,
     InputFileError,
     IllegalXMLFormat,
     UnexpectedXMLStructure,
@@ -18,6 +21,23 @@ class Interpreter:
         self.source_file = source_file
         self.input_file = input_file
         self.stats = Stats(stats)
+
+    @property
+    def input_file(self):
+        return self.__input_data
+
+    @input_file.setter
+    def input_file(self, file):
+        self.__input_data = []
+        if file is None:
+            self.__input_data = None
+        elif os.path.isfile(file):
+            with open(file) as f:
+                for line in f:
+                    self.__input_data.append(line.splitlines()[0])
+
+    def input_item(self):
+        return self.__input_data.pop(0)
 
     def __get_xml_tree__(self):
         try:
@@ -73,7 +93,8 @@ class Interpreter:
         if not self.root:
             self.parse_xml_file()
 
-        _Stack = Stack()
+        _CallStack = Stack()
+        _DataStack = Stack()
         _Frames = Frames()
 
         """Interpreting code"""
@@ -83,24 +104,35 @@ class Interpreter:
             if not self.instructions:
                 break
 
-            _instruction = self.instructions.pop(index)
+            try:
+                _instruction = self.instructions.pop(index)
+            except KeyError:
+                index += 1
+                continue
 
             if _instruction.opcode == "MOVE":
                 _Frames.move(_instruction.var, _instruction.symb1)
             elif _instruction.opcode == "CREATEFRAME":
                 _Frames.create_frame()
             elif _instruction.opcode == "PUSHFRAME":
-                pass
+                _Frames.push_frame()
             elif _instruction.opcode == "POPFRAME":
-                pass
+                _Frames.pop_frame()
             elif _instruction.opcode == "DEFVAR":
                 _Frames.defvar(_instruction.var)
             elif _instruction.opcode == "CALL":
                 pass
             elif _instruction.opcode == "RETURN":
                 pass
-            elif _instruction.opcode == "WRITE":
-                pass
+            elif _instruction.opcode == "PUSHS":
+                _DataStack.push(_instruction.symb1)
+            elif _instruction.opcode == "POPS":
+                _Frames.move(_instruction.var, _DataStack.pop())
+            elif _instruction.opcode == "CLEARS":
+                _DataStack.clear()
+            elif _instruction.opcode in IppCode21.stack_instructions:
+                result = _Frames.stack_ops(stack=_DataStack, op=_instruction.opcode)
+                _DataStack.push(result)
             elif _instruction.opcode == "ADD":
                 _Frames.math(
                     var=_instruction.var,
@@ -129,5 +161,26 @@ class Interpreter:
                     symb2=_instruction.symb2,
                     op="IDIV",
                 )
+            elif _instruction.opcode == "READ":
+                if self.input_file is None:
+                    _Frames.read(_instruction.var, _instruction.type, None)
+                else:
+                    _Frames.read(_instruction.var, _instruction.type, self.input_item())
+            elif _instruction.opcode == "WRITE":
+                _Frames.write(_instruction.symb1)
+            elif _instruction.opcode == "EXIT":
+                # TODO add stats
+                try:
+                    if (
+                        int(_instruction.symb1.value) > 0
+                        and int(_instruction.symb1.value) <= 49
+                    ):
+                        raise ExitRequest(int(_instruction.symb1.value))
+                    else:
+                        raise ValueError
+                except ValueError:
+                    raise RunTimeWrongOperandValueError
+                except ExitRequest:
+                    raise
 
             index += 1
