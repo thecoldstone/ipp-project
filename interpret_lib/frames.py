@@ -139,7 +139,7 @@ class Frames:
     def stack_ops(self, **kwargs):
         symb1 = symb2 = None
         if kwargs["op"] in ["NOTS", "INT2CHARS"]:
-            symb2 = kwargs["stack"].item()
+            symb1 = kwargs["stack"].item()
         else:
             symb2 = kwargs["stack"].item()
             symb1 = kwargs["stack"].item(2)
@@ -150,7 +150,7 @@ class Frames:
         if type(symb1) is Variable:
             _, symb1 = self.__get_frame_and_var(symb1)
 
-        return self.__calc(symb1=symb2, symb2=symb1, op=kwargs["op"][:-1])
+        return self.__calc(symb1=symb1, symb2=symb2, op=kwargs["op"][:-1])
 
     def __calc(self, **kwargs):
         frame = var = None
@@ -169,6 +169,8 @@ class Frames:
             elif op == "SUB":
                 result = int(symb1.value) - int(symb2.value)
             elif op == "MUL":
+                if symb1._type != "int" or symb2._type != "int":
+                    raise RunTimeTypeError("Integeres types are expected")
                 result = int(symb1.value) * int(symb2.value)
             elif op == "IDIV":
                 result = int(int(symb1.value) / int(symb2.value))
@@ -189,13 +191,13 @@ class Frames:
                     if op == "LT":
                         result = (
                             True
-                            if symb1.value == "false" and symb2.value2 == "true"
+                            if symb1.value == False and symb2.value == True
                             else False
                         )
                     else:
                         result = (
                             True
-                            if symb1.value == "true" and symb2.value2 == "false"
+                            if symb1.value == True and symb2.value == False
                             else False
                         )
                 result_type = "bool"
@@ -229,8 +231,12 @@ class Frames:
                 except ValueError:
                     raise RunTimeIllegalStringOperationError
             elif op == "STRI2INT":
-                # TODO
-                result = ""
+                if symb1._type != "string" or symb2._type != "int":
+                    raise RunTimeTypeError
+                try:
+                    result = ord(symb1.value[int(symb2.value)])
+                except IndexError:
+                    raise RunTimeIllegalStringOperationError
             elif op == "CONCAT":
                 result = ""
                 pass

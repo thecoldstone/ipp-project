@@ -112,22 +112,22 @@ class Instruction(InstructionProperties):
             self.__args[1].verify_symb()
             self.var = self.__create_variable(self.__args[0].data, self.__args[0].type)
             self.symb1 = self.__create_symbol(self.__args[1].data, self.__args[1].type)
+        elif self.opcode in ["DEFVAR", "POPS"]:
+            # OPCODE <var>
+            self.verify_tockens(1)
+            self.__args[0].verify_var()
+            self.var = self.__create_variable(self.__args[0].data, self.__args[0].type)
+        elif self.opcode in ["CALL", "LABEL", "JUMP", "JUMPIFEQS", "JUMPIFNEQS"]:
+            # OPCODE <label>
+            self.verify_tockens(1)
+            self.__args[0].verify_label()
+            self.label = self.__args[0].data
         elif (
             self.opcode in ["CREATEFRAME", "PUSHFRAME", "POPFRAME", "RETURN", "BREAK"]
             or self.opcode in IppCode21.stack_instructions
         ):
             # OPCODE
             self.verify_tockens()
-        elif self.opcode in ["DEFVAR", "POPS"]:
-            # OPCODE <var>
-            self.verify_tockens(1)
-            self.__args[0].verify_var()
-            self.var = self.__create_variable(self.__args[0].data, self.__args[0].type)
-        elif self.opcode in ["CALL", "LABEL", "JUMP"]:
-            # OPCODE <label>
-            self.verify_tockens(1)
-            self.__args[0].verify_label()
-            self.label = self.__args[0].data
         elif self.opcode in ["JUMPIFEQ", "JUMPIFNEQ"]:
             # OPCODE <label> <symb1> <symb2>
             self.verify_tockens(3)

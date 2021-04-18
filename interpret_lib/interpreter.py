@@ -139,6 +139,28 @@ class Interpreter:
                 _Frames.move(_instruction.var, _DataStack.pop())
             elif _instruction.opcode == "CLEARS":
                 _DataStack.clear()
+            elif _instruction.opcode == "JUMPIFEQS":
+                result = _Frames.stack_ops(stack=_DataStack, op="EQS")
+                if result.value is True:
+                    try:
+                        _index = self.labels[_instruction.label].order
+                    except KeyError:
+                        raise SemanticError(
+                            f"Label {_instruction.label} has not been defined"
+                        )
+                    index = num_of_instructions.index(_index)
+                    continue
+            elif _instruction.opcode == "JUMPIFNEQS":
+                result = _Frames.stack_ops(stack=_DataStack, op="EQS")
+                if not result.value is True:
+                    try:
+                        _index = self.labels[_instruction.label].order
+                    except KeyError:
+                        raise SemanticError(
+                            f"Label {_instruction.label} has not been defined"
+                        )
+                    index = num_of_instructions.index(_index)
+                    continue
             elif _instruction.opcode in IppCode21.stack_instructions:
                 result = _Frames.stack_ops(stack=_DataStack, op=_instruction.opcode)
                 _DataStack.push(result)
@@ -187,7 +209,12 @@ class Interpreter:
                 continue
             elif _instruction.opcode in ["JUMPIFEQ", "JUMPIFNEQ"]:
                 # TODO
-                pass
+                _Frames.evaluate(
+                    var=_instruction.var,
+                    symb1=_instruction.symb1,
+                    symb2=_instruction.symb2,
+                    op="EQ",
+                )
             elif _instruction.opcode == "EXIT":
                 # TODO add stats
                 try:
