@@ -45,7 +45,7 @@ class Instruction(InstructionProperties):
         try:
             if (
                 int(instruction.attrib["order"]) in Instruction.order_set
-                or int(instruction.attrib["order"]) < 0
+                or int(instruction.attrib["order"]) <= 0
             ):
                 raise UnexpectedXMLStructure(
                     'Wrong order of instruction "{}"'.format(
@@ -68,23 +68,28 @@ class Instruction(InstructionProperties):
             )
 
         self.order = int(instruction.attrib["order"])
-        self.opcode = instruction.attrib["opcode"]
+        self.opcode = instruction.attrib["opcode"].upper()
 
         Instruction.order_set.add(self.order)
 
     def parse_args(self, instruction: ET.Element):
         self.__args = []
 
-        cur_order = 1
+        cur_order = []
         for child in instruction:
             arg = Argument(child)
-            if arg.order != cur_order:
+            if arg.order in cur_order:
                 raise UnexpectedXMLStructure(
                     'Wrong order of argument element "{}"'.format(arg.data)
                 )
             self.__args.append(arg)
-            cur_order += 1
+            cur_order.append(arg.order)
 
+        self.__args.sort(key=lambda x: x.order)
+
+        if len(self.__args) > 0:
+            if self.__args[0].order != 1:
+                raise UnexpectedXMLStructure("Wrong order of argument element")
         self.verify()
 
     def __create_variable(self, var: str, vtype: str):

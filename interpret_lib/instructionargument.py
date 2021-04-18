@@ -18,6 +18,10 @@ class Argument:
 
         try:
             self.order = int(arg.tag[-1])
+            if self.order < 1:
+                raise UnexpectedXMLStructure(
+                    'Wrong order of argument element "{}"'.format(arg.data)
+                )
         except ValueError:
             raise UnexpectedXMLStructure(
                 'Order of the argument "{}" has illegal order value {}'.format(
@@ -73,7 +77,10 @@ class Argument:
             elif self.type == "string":
                 if self.data is None:
                     self.data = ""
-                # TODO Finish
+                else:
+                    self.data = re.sub(
+                        r"\\([0-9]{3})", lambda x: chr(int(x.group(1))), self.data
+                    )
             elif self.type == "nil":
                 if self.data != "nil":
                     raise UnexpectedXMLStructure(

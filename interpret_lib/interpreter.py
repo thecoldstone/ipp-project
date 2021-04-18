@@ -87,7 +87,12 @@ class Interpreter:
                 if inst.label in [v.label for k, v in self.labels.items()]:
                     raise SemanticError("Redefinition of label")
                 else:
-                    self.labels[inst.order] = inst
+                    self.labels[inst.label] = inst
+
+        self.instructions = sorted(
+            self.instructions.items(), key=lambda index: index[0]
+        )
+        self.instructions = {k: v for k, v in self.instructions}
 
     def interpret(self):
         if not self.root:
@@ -98,17 +103,12 @@ class Interpreter:
         _Frames = Frames()
 
         """Interpreting code"""
-        index = 1
-        while True:
+        num_of_instructions = list(self.instructions.keys())
+        inst_order = num_of_instructions[0]
+        index = 0
+        while index < len(num_of_instructions):
 
-            if not self.instructions:
-                break
-
-            try:
-                _instruction = self.instructions.pop(index)
-            except KeyError:
-                index += 1
-                continue
+            _instruction = self.instructions[num_of_instructions[index]]
 
             if _instruction.opcode == "MOVE":
                 _Frames.move(_instruction.var, _instruction.symb1)
@@ -121,9 +121,18 @@ class Interpreter:
             elif _instruction.opcode == "DEFVAR":
                 _Frames.defvar(_instruction.var)
             elif _instruction.opcode == "CALL":
-                pass
+                try:
+                    _index = self.labels[_instruction.label].order
+                except KeyError:
+                    raise SemanticError(
+                        f"Label {_instruction.label} has not been defined"
+                    )
+                index = num_of_instructions.index(_index)
+                _CallStack.push(_instruction.order)
+                continue
             elif _instruction.opcode == "RETURN":
-                pass
+                index = _CallStack.pop()
+                continue
             elif _instruction.opcode == "PUSHS":
                 _DataStack.push(_instruction.symb1)
             elif _instruction.opcode == "POPS":
@@ -133,33 +142,30 @@ class Interpreter:
             elif _instruction.opcode in IppCode21.stack_instructions:
                 result = _Frames.stack_ops(stack=_DataStack, op=_instruction.opcode)
                 _DataStack.push(result)
-            elif _instruction.opcode == "ADD":
-                _Frames.math(
+            elif _instruction.opcode in [
+                "ADD",
+                "SUB",
+                "MUL",
+                "IDIV",
+                "LT",
+                "GT",
+                "EQ",
+                "AND",
+                "OR",
+                "NOT",
+                "INT2CHAR",
+                "STRI2INT",
+                "CONCAT",
+                "STRLEN",
+                "GETCHAR",
+                "SETCHAR",
+                "TYPE",
+            ]:
+                _Frames.evaluate(
                     var=_instruction.var,
                     symb1=_instruction.symb1,
                     symb2=_instruction.symb2,
-                    op="ADD",
-                )
-            elif _instruction.opcode == "SUB":
-                _Frames.math(
-                    var=_instruction.var,
-                    symb1=_instruction.symb1,
-                    symb2=_instruction.symb2,
-                    op="SUB",
-                )
-            elif _instruction.opcode == "MUL":
-                _Frames.math(
-                    var=_instruction.var,
-                    symb1=_instruction.symb1,
-                    symb2=_instruction.symb2,
-                    op="MUL",
-                )
-            elif _instruction.opcode == "IDIV":
-                _Frames.math(
-                    var=_instruction.var,
-                    symb1=_instruction.symb1,
-                    symb2=_instruction.symb2,
-                    op="IDIV",
+                    op=_instruction.opcode,
                 )
             elif _instruction.opcode == "READ":
                 if self.input_file is None:
@@ -168,6 +174,20 @@ class Interpreter:
                     _Frames.read(_instruction.var, _instruction.type, self.input_item())
             elif _instruction.opcode == "WRITE":
                 _Frames.write(_instruction.symb1)
+            elif _instruction.opcode == "LABEL":
+                pass
+            elif _instruction.opcode == "JUMP":
+                try:
+                    _index = self.labels[_instruction.label].order
+                except KeyError:
+                    raise SemanticError(
+                        f"Label {_instruction.label} has not been defined"
+                    )
+                index = num_of_instructions.index(_index)
+                continue
+            elif _instruction.opcode in ["JUMPIFEQ", "JUMPIFNEQ"]:
+                # TODO
+                pass
             elif _instruction.opcode == "EXIT":
                 # TODO add stats
                 try:
@@ -182,5 +202,11 @@ class Interpreter:
                     raise RunTimeWrongOperandValueError
                 except ExitRequest:
                     raise
+            elif _instruction.opcode == "DPRINT":
+                # TODO
+                pass
+            elif _instruction.opcode == "BREAK":
+                # TODO
+                pass
 
             index += 1

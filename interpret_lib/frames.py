@@ -5,6 +5,7 @@ from interpret_lib.errorhandler import (
     RunTimeUndefinedVariableError,
     RunTimeUndefinedFrameError,
     RunTimeWrongOperandValueError,
+    RunTimeIllegalStringOperationError,
     InternalError,
 )
 from interpret_lib.tockens import Variable, Symbol, SYMBOL_TYPE
@@ -123,20 +124,21 @@ class Frames:
         else:
             _frame.insert(var)
 
-    def math(self, **kwargs):
-        try:
-            _frame, _var = self.__get_frame_and_var(kwargs["var"])
-            symb1 = self.__set_symb(kwargs["symb1"], "math")
-            symb2 = self.__set_symb(kwargs["symb2"], "math")
-            self.__calc(
-                frame=_frame, var=_var, symb1=symb1, symb2=symb2, op=kwargs["op"]
-            )
-        except Exception:
-            raise InternalError("Key for math operation does not exist")
+    def evaluate(self, **kwargs):
+        symb1 = kwargs["symb1"]
+        symb2 = kwargs["symb2"]
+        _frame, _var = self.__get_frame_and_var(kwargs["var"])
+
+        if type(symb1) is Variable:
+            _, symb1 = self.__get_frame_and_var(symb1)
+
+        if type(symb2) is Variable:
+            _, symb2 = self.__get_frame_and_var(symb2)
+        self.__calc(frame=_frame, var=_var, symb1=symb1, symb2=symb2, op=kwargs["op"])
 
     def stack_ops(self, **kwargs):
         symb1 = symb2 = None
-        if kwargs["op"] == "NOTS":
+        if kwargs["op"] in ["NOTS", "INT2CHARS"]:
             symb2 = kwargs["stack"].item()
         else:
             symb2 = kwargs["stack"].item()
@@ -220,9 +222,34 @@ class Frames:
                 result = not symb1.value
                 result_type = "bool"
             elif op == "INT2CHAR":
-                result = ""
+                if symb1._type != "int":
+                    raise RunTimeTypeError("Integer type is expected")
+                try:
+                    result = chr(int(symb1.value))
+                except ValueError:
+                    raise RunTimeIllegalStringOperationError
             elif op == "STRI2INT":
+                # TODO
                 result = ""
+            elif op == "CONCAT":
+                result = ""
+                pass
+            elif op == "STRLEN":
+                result = ""
+                pass
+            elif op == "GETCHAR":
+                result = ""
+                pass
+            elif op == "SETCHAR":
+                result = ""
+                pass
+            elif op == "TYPE":
+                if symb1._type == "var":
+                    result = ""
+                    result_type = "string"
+                else:
+                    result = symb1._type
+                    result_type = "string"
         except ValueError:
             raise RunTimeTypeError
         except ZeroDivisionError:
@@ -246,13 +273,13 @@ class Frames:
                 content = "nil" if len(content) == 0 else content
             elif vtype == "bool":
                 if content.lower() == "true":
-                    content = "true"
+                    content = True
                 else:
-                    content = "false"
+                    content = False
         except ValueError:
             content = 0
         finally:
-            _frame.move(_var, content)
+            _frame.move(_var, Symbol(content, vtype))
 
     def write(self, symb: SYMBOL_TYPE):
         if type(symb) is Variable:
