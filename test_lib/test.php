@@ -119,8 +119,6 @@ class Test
 
     private function interpret($file)
     {
-        $tmp_file = tmpfile();
-
         if (file_exists(substr($file, 0, -3) . "in")) {
             $input_file = substr($file, 0, -3) . "in";
             $command = "python $this->int_script --source=$file --input=$input_file";

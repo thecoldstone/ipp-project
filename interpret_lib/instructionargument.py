@@ -42,6 +42,7 @@ class Argument:
             "label",
             "type",
             "var",
+            "float",
         ]:
             raise UnexpectedXMLStructure(
                 'Unknown "{}" type for argument element'.format(arg.attrib["type"])
@@ -69,6 +70,7 @@ class Argument:
                     raise UnexpectedXMLStructure(
                         f"Illegal variable {self.data} for int type"
                     )
+                self.data = int(self.data)
             elif self.type == "bool":
                 if self.data not in ["false", "true"]:
                     raise UnexpectedXMLStructure(
@@ -87,9 +89,14 @@ class Argument:
                         f"Illegal variable {self.data} for bool type"
                     )
             elif self.type == "float":
-                pass
-                # TODO Finish
-
+                try:
+                    self.data = float.fromhex(self.data)
+                except ValueError:
+                    raise UnexpectedXMLStructure(
+                        "Invalid hexadecimal floating-point string"
+                    )
+                except TypeError:
+                    raise UnexpectedXMLStructure("Bad argument")
         elif self.type == "var":
             self.verify_var()
         else:

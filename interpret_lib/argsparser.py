@@ -53,11 +53,14 @@ def args_parser():
             input_file = args.input[0]
 
         if args.stats:
-            stats["file"] = args.stats
+            stats["file"] = args.stats[0]
 
         stats["insts"] = check_stats_arg(args.insts)
         stats["hot"] = check_stats_arg(args.hot)
         stats["vars"] = check_stats_arg(args.vars)
+
+        if args.stats is None:
+            stats = None
 
     except MissingArgError as e:
         raise

@@ -11,11 +11,10 @@ if __name__ == "__main__":
         source_file, input_file, stats = args_parser()
 
         if not source_file:
-            with open("tmp.xml", "w") as tmp:
+            source_file = "tmp.xml"
+            with open(source_file, "w") as tmp:
                 for line in sys.stdin:
                     tmp.write(line)
-
-            source_file = "tmp.xml"
 
         interpreter = Interpreter(source_file, input_file, stats)
         interpreter.parse_xml_file()

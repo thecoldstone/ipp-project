@@ -36,11 +36,16 @@ class IppCode21:
         # Flow Instructions
         "LABEL",
         "JUMP",
-        "JUMPIFEQ" "JUMPIFNEQ",
+        "JUMPIFEQ",
+        "JUMPIFNEQ",
         "EXIT",
         # Debugging Instructions
         "DPRINT",
         "BREAK",
+        # Float extension
+        "INT2FLOAT",
+        "FLOAT2INT",
+        "DIV",
     ]
 
     stack_instructions = [

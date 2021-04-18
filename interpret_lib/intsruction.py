@@ -105,7 +105,15 @@ class Instruction(InstructionProperties):
             return Symbol(symb, vtype)
 
     def verify(self):
-        if self.opcode in ["MOVE", "INT2CHAR", "STRLEN", "TYPE", "NOT"]:
+        if self.opcode in [
+            "MOVE",
+            "INT2CHAR",
+            "STRLEN",
+            "TYPE",
+            "NOT",
+            "INT2FLOAT",
+            "FLOAT2INT",
+        ]:
             # OPCODE <var> <symb>
             self.verify_tockens(2)
             self.__args[0].verify_var()
@@ -156,6 +164,7 @@ class Instruction(InstructionProperties):
             "CONCAT",
             "GETCHAR",
             "SETCHAR",
+            "DIV",
         ]:
             # OPCODE <var> <symb1> <symb2>
             self.verify_tockens(3)

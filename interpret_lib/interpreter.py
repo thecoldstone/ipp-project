@@ -17,10 +17,13 @@ from interpret_lib.frames import Frames
 
 
 class Interpreter:
-    def __init__(self, source_file=None, input_file=None, stats=None):
+    def __init__(self, source_file, input_file=None, stats=None):
         self.source_file = source_file
         self.input_file = input_file
-        self.stats = Stats(stats)
+        if stats is None:
+            self.Stats = None
+        else:
+            self.Stats = Stats(stats)
 
     @property
     def input_file(self):
@@ -37,6 +40,8 @@ class Interpreter:
                     self.__input_data.append(line.splitlines()[0])
 
     def input_item(self):
+        if self.__input_data == []:
+            return ""
         return self.__input_data.pop(0)
 
     def __get_xml_tree__(self):
@@ -110,6 +115,9 @@ class Interpreter:
 
             _instruction = self.instructions[num_of_instructions[index]]
 
+            if self.Stats is not None:
+                self.Stats.add_inst(_instruction)
+
             if _instruction.opcode == "MOVE":
                 _Frames.move(_instruction.var, _instruction.symb1)
             elif _instruction.opcode == "CREATEFRAME":
@@ -139,8 +147,16 @@ class Interpreter:
                 _Frames.move(_instruction.var, _DataStack.pop())
             elif _instruction.opcode == "CLEARS":
                 _DataStack.clear()
-            elif _instruction.opcode == "JUMPIFEQS":
-                result = _Frames.stack_ops(stack=_DataStack, op="EQS")
+            elif _instruction.opcode in ["JUMPIFEQ", "JUMPIFEQS"]:
+                if _instruction.opcode == "JUMPIFEQ":
+                    result = _Frames.evaluate(
+                        symb1=_instruction.symb1,
+                        symb2=_instruction.symb2,
+                        op="EQ",
+                    )
+                else:
+                    result = _Frames.stack_ops(stack=_DataStack, op="EQS")
+
                 if result.value is True:
                     try:
                         _index = self.labels[_instruction.label].order
@@ -150,8 +166,15 @@ class Interpreter:
                         )
                     index = num_of_instructions.index(_index)
                     continue
-            elif _instruction.opcode == "JUMPIFNEQS":
-                result = _Frames.stack_ops(stack=_DataStack, op="EQS")
+            elif _instruction.opcode in ["JUMPIFNEQ", "JUMPIFNEQS"]:
+                if _instruction.opcode == "JUMPIFNEQ":
+                    result = _Frames.evaluate(
+                        symb1=_instruction.symb1,
+                        symb2=_instruction.symb2,
+                        op="EQ",
+                    )
+                else:
+                    result = _Frames.stack_ops(stack=_DataStack, op="EQS")
                 if not result.value is True:
                     try:
                         _index = self.labels[_instruction.label].order
@@ -182,6 +205,9 @@ class Interpreter:
                 "GETCHAR",
                 "SETCHAR",
                 "TYPE",
+                "DIV",
+                "INT2FLOAT",
+                "FLOAT2INT",
             ]:
                 _Frames.evaluate(
                     var=_instruction.var,
@@ -207,14 +233,6 @@ class Interpreter:
                     )
                 index = num_of_instructions.index(_index)
                 continue
-            elif _instruction.opcode in ["JUMPIFEQ", "JUMPIFNEQ"]:
-                # TODO
-                _Frames.evaluate(
-                    var=_instruction.var,
-                    symb1=_instruction.symb1,
-                    symb2=_instruction.symb2,
-                    op="EQ",
-                )
             elif _instruction.opcode == "EXIT":
                 # TODO add stats
                 try:
@@ -237,3 +255,6 @@ class Interpreter:
                 pass
 
             index += 1
+
+        if self.Stats is not None:
+            self.Stats.write()

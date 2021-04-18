@@ -5,6 +5,7 @@ from interpret_lib.errorhandler import (
     RunTimeUndefinedVariableError,
     RunTimeUndefinedFrameError,
     RunTimeWrongOperandValueError,
+    RunTimeMissingValueError,
     RunTimeIllegalStringOperationError,
     InternalError,
 )
@@ -127,14 +128,18 @@ class Frames:
     def evaluate(self, **kwargs):
         symb1 = kwargs["symb1"]
         symb2 = kwargs["symb2"]
-        _frame, _var = self.__get_frame_and_var(kwargs["var"])
+        frame = var = None
+        if "var" in kwargs:
+            frame, var = self.__get_frame_and_var(kwargs["var"])
 
         if type(symb1) is Variable:
             _, symb1 = self.__get_frame_and_var(symb1)
 
         if type(symb2) is Variable:
             _, symb2 = self.__get_frame_and_var(symb2)
-        self.__calc(frame=_frame, var=_var, symb1=symb1, symb2=symb2, op=kwargs["op"])
+        return self.__calc(
+            frame=frame, var=var, symb1=symb1, symb2=symb2, op=kwargs["op"]
+        )
 
     def stack_ops(self, **kwargs):
         symb1 = symb2 = None
@@ -165,15 +170,44 @@ class Frames:
             symb1 = kwargs["symb1"]
             symb2 = kwargs["symb2"]
             if op == "ADD":
-                result = int(symb1.value) + int(symb2.value)
+                if symb1._type != symb2._type:
+                    raise RunTimeTypeError("Different types")
+                if symb1._type == "int":
+                    result = int(symb1.value) + int(symb2.value)
+                elif symb1._type == "float":
+                    result = symb1.value + symb2.value
+                    result_type = "float"
+                else:
+                    raise RunTimeTypeError
             elif op == "SUB":
-                result = int(symb1.value) - int(symb2.value)
+                if symb1._type != symb2._type:
+                    raise RunTimeTypeError("Different types")
+                if symb1._type == "int":
+                    result = int(symb1.value) - int(symb2.value)
+                elif symb1._type == "float":
+                    result = symb1.value - symb2.value
+                    result_type = "float"
             elif op == "MUL":
-                if symb1._type != "int" or symb2._type != "int":
-                    raise RunTimeTypeError("Integeres types are expected")
-                result = int(symb1.value) * int(symb2.value)
+                if symb1._type != symb2._type:
+                    raise RunTimeTypeError("Different types")
+                if symb1._type == "int":
+                    result = int(symb1.value) * int(symb2.value)
+                elif symb1._type == "float":
+                    result = symb1.value * symb2.value
+                    result_type = "float"
             elif op == "IDIV":
+                if symb1._type != "int" or symb2._type != "int":
+                    raise RunTimeTypeError
                 result = int(int(symb1.value) / int(symb2.value))
+            elif op == "DIV":
+                if symb1._type != symb2._type:
+                    raise RunTimeTypeError("Different types")
+
+                if symb1._type == "float":
+                    result = symb1.value / symb2.value
+                    result_type = "float"
+                else:
+                    raise RunTimeTypeError
             elif op in ["LT", "GT"]:
                 if symb1._type != symb2._type:
                     raise RunTimeTypeError("Different types")
@@ -237,6 +271,19 @@ class Frames:
                     result = ord(symb1.value[int(symb2.value)])
                 except IndexError:
                     raise RunTimeIllegalStringOperationError
+            elif op == "INT2FLOAT":
+                if symb1.value is None:
+                    raise RunTimeMissingValueError
+                if symb1._type != "int":
+                    raise RunTimeTypeError
+                result = float(symb1.value)
+                result_type = "float"
+            elif op == "FLOAT2INT":
+                if symb1.value is None:
+                    raise RunTimeMissingValueError
+                if symb1._type != "float":
+                    raise RunTimeTypeError
+                result = int(symb1.value)
             elif op == "CONCAT":
                 result = ""
                 pass
@@ -275,6 +322,8 @@ class Frames:
 
             if vtype == "int":
                 content = int(content)
+            elif vtype == "float":
+                content = float(content)
             elif vtype == "string":
                 content = "nil" if len(content) == 0 else content
             elif vtype == "bool":
@@ -283,7 +332,15 @@ class Frames:
                 else:
                     content = False
         except ValueError:
-            content = 0
+            if vtype == "float":
+                try:
+                    content = float.fromhex(content)
+                except Exception:
+                    content = "nil"
+                    vtype = "nil"
+            else:
+                content = "nil"
+                vtype = "nil"
         finally:
             _frame.move(_var, Symbol(content, vtype))
 
@@ -299,6 +356,8 @@ class Frames:
             out_string = "true" if var.value is True else "false"
         elif var._type == "nil":
             out_string = ""
+        elif var._type == "float":
+            out_string = float.hex(var.value)
         else:
             out_string = var.value
 
