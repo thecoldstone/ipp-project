@@ -50,7 +50,7 @@ trait testDataInitializer
 
     private function create_file($fname, $data = null)
     {
-        echo "[NEW FILE] {$fname} has been created...\n";
+        // echo "[NEW FILE] {$fname} has been created...\n";
         file_put_contents($fname, $data);
     }
 }
