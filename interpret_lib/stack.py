@@ -3,6 +3,8 @@ from interpret_lib.tockens import Symbol, Variable, SYMBOL_TYPE
 
 
 class Stack:
+    """Stack class for storing data"""
+
     def __init__(self):
         self.stack = []
 

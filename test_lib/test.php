@@ -24,10 +24,13 @@ class Test
     private $JEXAMXML_MAC       = '/jexamxml/jexamxml.jar';
     private $JEXAMCFG_MAC       = '/jexamxml/options';
 
-    private $_disable_output    = true;
+    private $_disable_stderr    = true;
 
     private $passed             = 0;
     private $failed             = 0;
+
+    private $tmp_xml            = "tmp.xml";
+    private $tmp_txt            = "tmp.txt";
 
     public function __construct()
     {
@@ -57,77 +60,95 @@ class Test
         if ($this->parse_only) {
 
             foreach ($this->test_data as $file) {
-                $this->parse($file);
+                if ($this->parse($file))
+                    $this->passed++;
+                else
+                    $this->failed++;
             }
         } elseif ($this->int_only) {
             foreach ($this->test_data as $file) {
-                $this->interpret($file);
+                if ($this->interpret($file))
+                    $this->passed++;
+                else
+                    $this->failed++;
             }
         } else {
             foreach ($this->test_data as $file) {
-                $this->parse($file);
-                $this->interpret($file);
+                $this->tmp_xml = substr($file, 0, -3) . "xml";
+                $command = "php $this->parse_script < $file > $this->tmp_xml";
+                exec($command, $output, $rc);
+
+                if ($this->interpret($this->tmp_xml))
+                    $this->passed++;
+                else
+                    $this->failed++;
+
+                exec("rm $this->tmp_xml");
             }
         }
 
-        if ($this->passed == 0 && $this->failed == 0)
+        $total_tests = count($this->test_data);
+        if (file_exists($this->tmp_xml))
+            exec("rm $this->tmp_xml");
+
+        if (file_exists($this->tmp_txt))
+            exec("rm $this->tmp_txt");
+
+
+        if ($this->passed == 0 && $this->failed == 0 || $total_tests == 0)
             $succuess_ratio = 0;
         else
-            $succuess_ratio = ($this->passed / ($this->passed + $this->failed)) * 100;
-        echo "Success:$succuess_ratio\nPassed:$this->passed\nFailed:$this->failed\n";
+            $succuess_ratio = ($this->passed / $total_tests) * 100;
+
+        echo "Success:$succuess_ratio\nPassed:$this->passed\nFailed:$this->failed\n-------------\nTotal:$total_tests\n";
     }
 
     private function parse($file)
     {
-        $tmp_file = tmpfile();
-        $command = "php $this->parse_script < $file";
+        $command = "php $this->parse_script < $file > $this->tmp_xml";
 
-        if ($this->_disable_output) {
+        if ($this->_disable_stderr) {
             $command = $command . " 2> /dev/null";
         }
 
-        unset($output);
         exec($command, $output, $rc);
-        fwrite($tmp_file, implode("\n", $output));
 
         $actual_rc = file_get_contents(substr($file, 0, -3) . "rc");
         if ($actual_rc == "") {
             $actual_rc = 0;
         }
 
+        echo "File: $file rc:$ $rc arc: $actual_rc\n";
         if ($rc == $actual_rc) {
             if ($rc == 0) {
-                unset($actual_xml);
                 $actual_xml = substr($file, 0, -3) . "out";
-                $command = "java -jar $this->jexamxml $tmp_file $actual_xml";
+                $command = "java -jar $this->jexamxml $this->tmp_xml $actual_xml";
                 exec($command, $output, $rc);
 
                 if (preg_match("/Two files are identical/", implode("\n", $output))) {
-                    $this->passed++;
+                    return true;
                 } else {
-                    $this->failed++;
+                    return false;
                 }
             } else {
-                $this->passed++;
+                return true;
             }
         } else {
-            $this->failed++;
+            return false;
         }
-
-        fclose($tmp_file);
     }
 
     private function interpret($file)
     {
         if (file_exists(substr($file, 0, -3) . "in")) {
             $input_file = substr($file, 0, -3) . "in";
-            $command = "python $this->int_script --source=$file --input=$input_file";
+            $command = "python $this->int_script --source=$file --input=$input_file > $this->tmp_txt";
         } else {
-            $command = "python $this->int_script --source=$file";
+            $command = "python $this->int_script --source=$file > $this->tmp_txt";
         }
 
-        if ($this->_disable_output) {
-            $command = $command . " > tmp.txt";
+        if ($this->_disable_stderr) {
+            $command = $command . " 2> /dev/null";
         }
 
         exec($command, $output, $rc);
@@ -140,22 +161,19 @@ class Test
         if ($rc == $actual_rc) {
             if ($rc == 0) {
                 $actual_output = substr($file, 0, -3) . "out";
-                $command = "diff $actual_output tmp.txt";
+                $command = "diff $actual_output $this->tmp_txt";
                 exec($command, $output, $dif_rc);
                 if ($dif_rc == 0) {
-                    $this->passed++;
+                    return true;
                 } else {
-                    echo "Different files: $file rc:$dif_rc\n";
-                    $this->failed++;
+                    return false;
                 }
             } else {
-                $this->passed++;
+                return true;
             }
         } else {
-            echo "Different rc: $file rc: $rc arc: $actual_rc\n";
-            $this->failed++;
+            return false;
         }
-        exec("rm tmp.txt");
     }
 
     public function build_html()

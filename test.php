@@ -10,7 +10,6 @@ try {
     }
     $test->setup();
     $test->run();
-    // $test->test($test->test_directory);
 } catch (Exception $e) {
     echo "[ERROR] ", $e->getMessage(), "\n";
     exit($e->getCode());

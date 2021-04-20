@@ -17,6 +17,8 @@ from interpret_lib.frames import Frames
 
 
 class Interpreter:
+    """Main file which implements Interpreter"""
+
     def __init__(self, source_file, input_file=None, stats=None):
         self.source_file = source_file
         self.input_file = input_file
@@ -31,6 +33,11 @@ class Interpreter:
 
     @input_file.setter
     def input_file(self, file):
+        """Downloads input data into the list
+
+        Args:
+            file (filepath): Input file with data
+        """
         self.__input_data = []
         if file is None:
             self.__input_data = None
@@ -40,11 +47,25 @@ class Interpreter:
                     self.__input_data.append(line.splitlines()[0])
 
     def input_item(self):
+        """Gets input item
+
+        Returns:
+            string: Input string
+        """
         if self.__input_data == []:
             return ""
         return self.__input_data.pop(0)
 
     def __get_xml_tree__(self):
+        """Parses xml file and returns its representation as a tree
+
+        Raises:
+            InputFileError: File is damaged
+            IllegalXMLFormat: XML syntax is violated
+
+        Returns:
+            tree: Element Tree instance
+        """
         try:
             tree = ET.parse(self.source_file)
         except IOError:
@@ -55,6 +76,11 @@ class Interpreter:
         return tree
 
     def __parse_root__(self):
+        """Parses root of the Element Tree
+
+        Raises:
+            UnexpectedXMLStructure: [description]
+        """
         if self.root.tag != "program":
             raise UnexpectedXMLStructure(f"{self.root.tag} cannot be as a root element")
 
@@ -73,6 +99,7 @@ class Interpreter:
             )
 
     def parse_xml_file(self):
+        """Parses xml file and checking its syntax"""
         tree = self.__get_xml_tree__()
         self.root = tree.getroot()
         # Parse root node
@@ -100,6 +127,7 @@ class Interpreter:
         self.instructions = {k: v for k, v in self.instructions}
 
     def interpret(self):
+        """Interprets XML file"""
         if not self.root:
             self.parse_xml_file()
 
@@ -111,10 +139,11 @@ class Interpreter:
         num_of_instructions = list(self.instructions.keys())
         inst_order = num_of_instructions[0]
         index = 0
+        # Traversing the list of instructions which might be called using dictionary of instructions and labels
+        # Index stands for instruction order
         while index < len(num_of_instructions):
 
             _instruction = self.instructions[num_of_instructions[index]]
-
             if self.Stats is not None:
                 self.Stats.add_inst(_instruction)
 
@@ -148,6 +177,13 @@ class Interpreter:
             elif _instruction.opcode == "CLEARS":
                 _DataStack.clear()
             elif _instruction.opcode in ["JUMPIFEQ", "JUMPIFEQS"]:
+                try:
+                    _index = self.labels[_instruction.label].order
+                except KeyError:
+                    raise SemanticError(
+                        f"Label {_instruction.label} has not been defined"
+                    )
+
                 if _instruction.opcode == "JUMPIFEQ":
                     result = _Frames.evaluate(
                         symb1=_instruction.symb1,
@@ -158,15 +194,15 @@ class Interpreter:
                     result = _Frames.stack_ops(stack=_DataStack, op="EQS")
 
                 if result.value is True:
-                    try:
-                        _index = self.labels[_instruction.label].order
-                    except KeyError:
-                        raise SemanticError(
-                            f"Label {_instruction.label} has not been defined"
-                        )
                     index = num_of_instructions.index(_index)
                     continue
             elif _instruction.opcode in ["JUMPIFNEQ", "JUMPIFNEQS"]:
+                try:
+                    _index = self.labels[_instruction.label].order
+                except KeyError:
+                    raise SemanticError(
+                        f"Label {_instruction.label} has not been defined"
+                    )
                 if _instruction.opcode == "JUMPIFNEQ":
                     result = _Frames.evaluate(
                         symb1=_instruction.symb1,
@@ -176,12 +212,6 @@ class Interpreter:
                 else:
                     result = _Frames.stack_ops(stack=_DataStack, op="EQS")
                 if not result.value is True:
-                    try:
-                        _index = self.labels[_instruction.label].order
-                    except KeyError:
-                        raise SemanticError(
-                            f"Label {_instruction.label} has not been defined"
-                        )
                     index = num_of_instructions.index(_index)
                     continue
             elif _instruction.opcode in IppCode21.stack_instructions:
@@ -234,19 +264,7 @@ class Interpreter:
                 index = num_of_instructions.index(_index)
                 continue
             elif _instruction.opcode == "EXIT":
-                # TODO add stats
-                try:
-                    if (
-                        int(_instruction.symb1.value) > 0
-                        and int(_instruction.symb1.value) <= 49
-                    ):
-                        raise ExitRequest(int(_instruction.symb1.value))
-                    else:
-                        raise ValueError
-                except ValueError:
-                    raise RunTimeWrongOperandValueError
-                except ExitRequest:
-                    raise
+                _Frames.exit_call(_instruction.symb1)
             elif _instruction.opcode == "DPRINT":
                 # TODO
                 pass
@@ -257,4 +275,5 @@ class Interpreter:
             index += 1
 
         if self.Stats is not None:
+            # Flash out the stats content into the file
             self.Stats.write()

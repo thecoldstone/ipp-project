@@ -1,15 +1,13 @@
 import xml.etree.ElementTree as ET
-from interpret_lib.errorhandler import (
-    InputFileError,
-    IllegalXMLFormat,
-    UnexpectedXMLStructure,
-)
+from interpret_lib.errorhandler import UnexpectedXMLStructure
 from interpret_lib.ippcode21 import IppCode21
 from interpret_lib.instructionargument import Argument
 from interpret_lib.tockens import Variable, Symbol
 
 
 class InstructionProperties:
+    """Interface for Instruction"""
+
     def __init__(self):
         self.opcode = None
         self.order = None
@@ -21,12 +19,29 @@ class InstructionProperties:
 
 
 class Instruction(InstructionProperties):
+    """Instruction class for storing
+
+    Args:
+        InstructionProperties ([type]): [description]
+
+    Raises:
+        UnexpectedXMLStructure: [description]
+    """
+
     order_set = set()
 
     def __init__(self):
         super().__init__()
 
     def parse(self, instruction: ET.Element):
+        """Parses IPPCode21 instruction
+
+        Args:
+            instruction: ET.Element
+
+        Raises:
+            UnexpectedXMLStructure: Illegal syntax structure
+        """
         if instruction.tag != "instruction":
             raise UnexpectedXMLStructure(
                 f"{instruction.tag} cannot represent instruction"
@@ -73,6 +88,14 @@ class Instruction(InstructionProperties):
         Instruction.order_set.add(self.order)
 
     def parse_args(self, instruction: ET.Element):
+        """Parses instruction's arguments using instructionargument module
+
+        Args:
+            instruction (ET.Element): Some IPPCode21 instruction
+
+        Raises:
+            UnexpectedXMLStructure: Illegal syntax structure
+        """
         self.__args = []
 
         cur_order = []
@@ -105,6 +128,7 @@ class Instruction(InstructionProperties):
             return Symbol(symb, vtype)
 
     def verify(self):
+        """Verifies the syntax of instruction and its elements"""
         if self.opcode in [
             "MOVE",
             "INT2CHAR",

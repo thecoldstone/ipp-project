@@ -8,12 +8,15 @@ from interpret_lib.errorhandler import (
     RunTimeMissingValueError,
     RunTimeIllegalStringOperationError,
     InternalError,
+    ExitRequest,
 )
 from interpret_lib.tockens import Variable, Symbol, SYMBOL_TYPE
 from interpret_lib.stack import Stack
 
 
 class Frame:
+    """Frame class for dealing with memory modules"""
+
     def __init__(self):
         self.variables = {}
 
@@ -53,6 +56,8 @@ class TemporaryFrame(Frame):
 
 
 class Frames:
+    """Frame API enhanced by three frames such as Global Frame (GF), Local Frame (LF), Temporary Frame (TF)."""
+
     def __init__(self):
         self.GF = GlobalFrame()
         self.LF = None
@@ -68,6 +73,19 @@ class Frames:
             return self.TF
 
     def __get_frame_and_var(self, var: Variable):
+        """Gets frame and variable
+
+        Args:
+            var (Variable): Variable by which frame can be found
+
+        Raises:
+            RunTimeUndefinedFrameError: Frame does not exist
+            RunTimeUndefinedVariableError: Variable does not exist
+
+        Returns:
+            Frame: Frame of variable
+            Variable: Variable
+        """
         _frame = self.__get_frame(var.frame)
         if not _frame:
             raise RunTimeUndefinedFrameError
@@ -79,24 +97,25 @@ class Frames:
 
         return _frame, _frame.get_var(var.name)
 
-    def __set_symb(self, symb: SYMBOL_TYPE, operation: str):
-        _symb = symb
-        if type(symb) is Variable:
-            _frame = self.__get_frame(symb.frame)
-            _symb = _frame.get_var(symb.name)
-            # if operation == "math":
-            #     _symb.value =
-            #     _frame.variables[symb.name]._type = "int"
-
-        return _symb
-
     def move(self, var: Variable, symb: SYMBOL_TYPE):
-        _frame, _var = self.__get_frame_and_var(var)
+        """Moves symb value to var
+
+        Args:
+            var (Variable): Variable for changing
+            symb (SYMBOL_TYPE): Symbol
+
+        Raises:
+            RunTimeMissingValueError: Symbol does not contain any value to move
+        """
+        frame, var = self.__get_frame_and_var(var)
 
         if type(symb) is Variable:
-            _ = self.__var_exists(symb)
+            _, symb = self.__get_frame_and_var(symb)
 
-        _frame.move(_var, symb)
+        if symb.value is None:
+            raise RunTimeMissingValueError
+
+        frame.move(var, symb)
 
     def create_frame(self):
         self.TF = TemporaryFrame()
@@ -112,20 +131,33 @@ class Frames:
     def pop_frame(self):
         if not self.__get_frame("LF"):
             raise RunTimeUndefinedFrameError
-        self.TF = self.stack.pop()
-        self.LF = self.stack.top()
+        try:
+            self.TF = self.stack.pop()
+        except RunTimeMissingValueError:
+            raise RunTimeUndefinedFrameError
 
     def defvar(self, var: Variable):
         _frame = self.__get_frame(var.frame)
         if not _frame:
             raise RunTimeUndefinedFrameError
 
-        if self.GF.contains(var) or _frame.contains(var):
+        if _frame.contains(var):
             raise SemanticError("Redefinition of variable")
         else:
             _frame.insert(var)
 
     def evaluate(self, **kwargs):
+        """Evaluation API for several IPPCode21 instructions which accepts dictionary as input parameter.
+
+        Dictionay can contain the following attributes:
+            symb1 - Symbol
+            symb2 - Symbol
+            var - Variable
+            op - Instruction's opcode
+
+        Returns:
+            Symbol: Newly created symbol
+        """
         symb1 = kwargs["symb1"]
         symb2 = kwargs["symb2"]
         frame = var = None
@@ -142,6 +174,15 @@ class Frames:
         )
 
     def stack_ops(self, **kwargs):
+        """Stack evaluation API for IPPCode21 Stack Extension instructions which accepts dictionary as input parameter.
+
+        Dictionay can contain the following attributes:
+            stack - Stack with data
+            op - Instruction's opcode
+
+        Returns:
+            Symbol: Newly created symbol
+        """
         symb1 = symb2 = None
         if kwargs["op"] in ["NOTS", "INT2CHARS"]:
             symb1 = kwargs["stack"].item()
@@ -158,6 +199,23 @@ class Frames:
         return self.__calc(symb1=symb1, symb2=symb2, op=kwargs["op"][:-1])
 
     def __calc(self, **kwargs):
+        """Main evaluation method for arithmetic, relational, boolean and formatting IPPCode21 instructions.
+        Accepts dictionary as input and may contain following attributes within:
+            symb1 - Symbol object or Variable object
+            symb2 - Symbol object or Variable object
+            var - Variable object
+            stack - Stack with data
+            op - Instruction's opcode
+
+        Raises:
+            RunTimeMissingValueError: Variable or Symbol does not contain any value
+            RunTimeTypeError: Wrong type
+            RunTimeIllegalStringOperationError: Violation of string operations
+            RunTimeWrongOperandValueError: Wrong value for Variable or Symbol
+
+        Returns:
+            Symbol: Newly created symbol
+        """
         frame = var = None
         result_type = "int"
         try:
@@ -169,7 +227,10 @@ class Frames:
             op = kwargs["op"]
             symb1 = kwargs["symb1"]
             symb2 = kwargs["symb2"]
+
             if op == "ADD":
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type != symb2._type:
                     raise RunTimeTypeError("Different types")
                 if symb1._type == "int":
@@ -180,6 +241,8 @@ class Frames:
                 else:
                     raise RunTimeTypeError
             elif op == "SUB":
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type != symb2._type:
                     raise RunTimeTypeError("Different types")
                 if symb1._type == "int":
@@ -188,6 +251,8 @@ class Frames:
                     result = symb1.value - symb2.value
                     result_type = "float"
             elif op == "MUL":
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type != symb2._type:
                     raise RunTimeTypeError("Different types")
                 if symb1._type == "int":
@@ -196,10 +261,14 @@ class Frames:
                     result = symb1.value * symb2.value
                     result_type = "float"
             elif op == "IDIV":
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type != "int" or symb2._type != "int":
                     raise RunTimeTypeError
                 result = int(int(symb1.value) / int(symb2.value))
             elif op == "DIV":
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type != symb2._type:
                     raise RunTimeTypeError("Different types")
 
@@ -209,6 +278,8 @@ class Frames:
                 else:
                     raise RunTimeTypeError
             elif op in ["LT", "GT"]:
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type != symb2._type:
                     raise RunTimeTypeError("Different types")
                 if symb1._type == "int":
@@ -234,8 +305,12 @@ class Frames:
                             if symb1.value == True and symb2.value == False
                             else False
                         )
+                else:
+                    raise RunTimeTypeError
                 result_type = "bool"
             elif op == "EQ":
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type == symb2._type:
                     pass
                 elif symb1._type == "nil" or symb2._type == "nil":
@@ -245,6 +320,8 @@ class Frames:
                 result = symb1.value == symb2.value
                 result_type = "bool"
             elif op in ["AND", "OR"]:
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type != "bool" or symb2._type != "bool":
                     raise RunTimeTypeError("Boolean types are expected")
                 if op == "OR":
@@ -253,20 +330,30 @@ class Frames:
                     result = bool(symb1.value) and bool(symb2.value)
                 result_type = "bool"
             elif op == "NOT":
+                if symb1.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type != "bool":
                     raise RunTimeTypeError("Boolean type is expected")
                 result = not symb1.value
                 result_type = "bool"
             elif op == "INT2CHAR":
+                if symb1.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type != "int":
                     raise RunTimeTypeError("Integer type is expected")
                 try:
                     result = chr(int(symb1.value))
                 except ValueError:
                     raise RunTimeIllegalStringOperationError
+                result_type = "string"
             elif op == "STRI2INT":
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
                 if symb1._type != "string" or symb2._type != "int":
                     raise RunTimeTypeError
+                if int(symb2.value) < 0:
+                    raise RunTimeIllegalStringOperationError
+
                 try:
                     result = ord(symb1.value[int(symb2.value)])
                 except IndexError:
@@ -285,17 +372,52 @@ class Frames:
                     raise RunTimeTypeError
                 result = int(symb1.value)
             elif op == "CONCAT":
-                result = ""
-                pass
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
+                if symb1._type != "string" or symb2._type != "string":
+                    raise RunTimeTypeError
+                result = symb1.value + symb2.value
+                result_type = "string"
             elif op == "STRLEN":
-                result = ""
-                pass
+                if symb1.value is None:
+                    raise RunTimeMissingValueError
+                if symb1._type != "string":
+                    raise RunTimeTypeError
+                result = len(symb1.value)
             elif op == "GETCHAR":
-                result = ""
-                pass
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
+                if symb1._type != "string" or symb2._type != "int":
+                    raise RunTimeTypeError
+                if int(symb2.value) < 0:
+                    raise RunTimeIllegalStringOperationError
+                try:
+                    result = symb1.value[int(symb2.value)]
+                except IndexError:
+                    raise RunTimeIllegalStringOperationError
+                result_type = "string"
             elif op == "SETCHAR":
-                result = ""
-                pass
+                if var.value is None:
+                    raise RunTimeMissingValueError
+                if symb1.value is None or symb2.value is None:
+                    raise RunTimeMissingValueError
+
+                if var._type != "string":
+                    raise RunTimeTypeError
+                if symb1._type != "int" or symb2._type != "string":
+                    raise RunTimeTypeError
+                if int(symb1.value) < 0:
+                    raise RunTimeIllegalStringOperationError
+
+                if len(symb2.value) == 0:
+                    raise RunTimeIllegalStringOperationError
+                try:
+                    result = list(var.value)
+                    result[int(symb1.value)] = str(symb2.value[0])
+                    result = "".join(result)
+                except IndexError:
+                    raise RunTimeIllegalStringOperationError
+                result_type = "string"
             elif op == "TYPE":
                 if symb1._type == "var":
                     result = ""
@@ -314,6 +436,16 @@ class Frames:
             return Symbol(result, result_type)
 
     def read(self, var: Variable, vtype: str, content):
+        """Implementation of Read instruction. Moves content to var
+
+        Args:
+            var (Variable): Variable to change
+            vtype (str): Type of data to read
+            content ([string]): Content to insert
+
+        Raises:
+            ValueError: [description]
+        """
         _frame, _var = self.__get_frame_and_var(var)
 
         try:
@@ -325,12 +457,14 @@ class Frames:
             elif vtype == "float":
                 content = float(content)
             elif vtype == "string":
-                content = "nil" if len(content) == 0 else content
+                content = str(content)
             elif vtype == "bool":
                 if content.lower() == "true":
                     content = True
-                else:
+                elif content.lower() == "false":
                     content = False
+                else:
+                    raise ValueError
         except ValueError:
             if vtype == "float":
                 try:
@@ -345,10 +479,21 @@ class Frames:
             _frame.move(_var, Symbol(content, vtype))
 
     def write(self, symb: SYMBOL_TYPE):
+        """Implementation of Write instruction. Prints out to STDOUT value of symb
+
+        Args:
+            symb (SYMBOL_TYPE): Variable or Symbol
+
+        Raises:
+            RunTimeMissingValueError: [description]
+        """
         if type(symb) is Variable:
             frame, var = self.__get_frame_and_var(symb)
         else:
             var = symb
+
+        if var.value is None:
+            raise RunTimeMissingValueError
 
         out_string = ""
 
@@ -362,3 +507,30 @@ class Frames:
             out_string = var.value
 
         print(out_string, end="")
+
+    def exit_call(self, symb: SYMBOL_TYPE):
+        """Implementation of Exit instruction.
+
+        Args:
+            symb (SYMBOL_TYPE): Variable or Symbol which contains integer value
+
+        Raises:
+            RunTimeMissingValueError: Element does not contain any value
+            RunTimeTypeError: Element has wrong type. Integer is expected
+            ExitRequest: Raises exit request to finish program as User has asked
+            RunTimeWrongOperandValueError: Exit code is reserved
+        """
+        if type(symb) is Variable:
+            frame, var = self.__get_frame_and_var(symb)
+        else:
+            var = symb
+
+        if var.value is None:
+            raise RunTimeMissingValueError
+        elif var._type != "int":
+            raise RunTimeTypeError
+        else:
+            if int(var.value) > 0 and int(var.value) <= 49:
+                raise ExitRequest(int(var.value))
+            else:
+                raise RunTimeWrongOperandValueError

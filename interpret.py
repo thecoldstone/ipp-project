@@ -28,13 +28,13 @@ if __name__ == "__main__":
             else:
                 print(f"[ERROR] {e.msg}")
         else:
-            # print(f"[INTERNAL ERROR] {e}")
             raise
+            # print(f"[INTERNAL ERROR] {e}")
 
         if hasattr(e, "exit_status"):
             exit_status = e.exit_status
 
     if os.path.exists("tmp.xml"):
         os.remove("tmp.xml")
-    
+
     sys.exit(exit_status)
