@@ -24,6 +24,12 @@ class Test
     private $JEXAMXML_MAC       = '/jexamxml/jexamxml.jar';
     private $JEXAMCFG_MAC       = '/jexamxml/options';
 
+    private $PHP_MERLIN         = "php7.4";
+    private $PYTHON_MERLIN      = "python3.8";
+
+    private $PHP_MAC            = "php";
+    private $PYTHON_MAC         = "python";
+
     private $_disable_stderr    = true;
 
     private $passed             = 0;
@@ -41,8 +47,8 @@ class Test
         $this->int_script = $this->path . '/interpret.py';
         $this->parse_only = false;
         $this->int_only = false;
-        $this->jexamxml = $this->path . $this->JEXAMXML_MAC;
-        $this->jexamcfg = $this->path . $this->JEXAMCFG_MAC;
+        $this->jexamxml = $this->path . $this->JEXAMXML_MERLIN;
+        $this->jexamcfg = $this->path . $this->JEXAMCFG_MERLIN;
     }
 
     public function setup()
@@ -75,7 +81,7 @@ class Test
         } else {
             foreach ($this->test_data as $file) {
                 $this->tmp_xml = substr($file, 0, -3) . "xml";
-                $command = "php $this->parse_script < $file > $this->tmp_xml";
+                $command = "$this->PHP_MERLIN $this->parse_script < $file > $this->tmp_xml";
                 exec($command, $output, $rc);
 
                 if ($this->interpret($this->tmp_xml))
@@ -105,7 +111,7 @@ class Test
 
     private function parse($file)
     {
-        $command = "php $this->parse_script < $file > $this->tmp_xml";
+        $command = "$this->PHP_MERLIN $this->parse_script < $file > $this->tmp_xml";
 
         if ($this->_disable_stderr) {
             $command = $command . " 2> /dev/null";
@@ -142,9 +148,9 @@ class Test
     {
         if (file_exists(substr($file, 0, -3) . "in")) {
             $input_file = substr($file, 0, -3) . "in";
-            $command = "python $this->int_script --source=$file --input=$input_file > $this->tmp_txt";
+            $command = "$this->PYTHON_MERLIN $this->int_script --source=$file --input=$input_file > $this->tmp_txt";
         } else {
-            $command = "python $this->int_script --source=$file > $this->tmp_txt";
+            $command = "$this->PYTHON_MERLIN $this->int_script --source=$file > $this->tmp_txt";
         }
 
         if ($this->_disable_stderr) {
